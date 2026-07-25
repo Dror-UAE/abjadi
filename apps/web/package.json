@@ -1,0 +1,30 @@
+{
+  "name": "@abjadi/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf .next .turbo"
+  },
+  "dependencies": {
+    "@abjadi/ui": "workspace:*",
+    "next": "^15.3.1",
+    "next-intl": "^4.13.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@abjadi/eslint-config": "workspace:*",
+    "@abjadi/typescript-config": "workspace:*",
+    "@types/node": "^22.15.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "eslint": "^9.25.0",
+    "typescript": "^5.8.3"
+  }
+}

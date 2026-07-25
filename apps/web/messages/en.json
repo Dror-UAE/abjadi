@@ -1,0 +1,69 @@
+{
+  "Meta": {
+    "title": "Abjadi — Discover the heritage of scripts",
+    "description": "Photograph an ancient inscription, recognize its letters, read its meaning, and document your find with Abjadi.",
+    "ogTitle": "Abjadi",
+    "ogDescription": "Discover the heritage of scripts and inscriptions with AI"
+  },
+  "Brand": {
+    "name": "Abjadi"
+  },
+  "Header": {
+    "navLabel": "Main navigation",
+    "how": "How it works",
+    "demo": "Demo",
+    "read": "Reading",
+    "archive": "Archive",
+    "cta": "Get the app",
+    "locale": "العربية",
+    "localeCode": "ar"
+  },
+  "Hero": {
+    "headline": "Discover the heritage of scripts and inscriptions",
+    "lede": "Photograph an inscription, read its letters, and document its meaning in seconds.",
+    "start": "Start your journey",
+    "how": "How it works"
+  },
+  "How": {
+    "eyebrow": "The journey",
+    "title": "From carved stone to clear meaning",
+    "copy": "Abjadi guides you from the photo to documenting the inscription — recognizing ancient letters and translating them into modern Arabic.",
+    "captureTitle": "Capture the text",
+    "captureCopy": "Point the camera and place the letters inside the frame.",
+    "captureAlt": "Abjadi home screen for capturing text",
+    "readTitle": "Read the meaning",
+    "readCopy": "It recognizes the letters and shows the translated text.",
+    "readAlt": "Analysis result with discovered letters and meaning",
+    "archiveTitle": "Document the find",
+    "archiveCopy": "Save the inscription with location, script type, and language.",
+    "archiveAlt": "Inscription documentation form"
+  },
+  "Process": {
+    "title": "AI that reads with you",
+    "copy": "From preparing the image to recognizing letters and translating the text — step by step.",
+    "cta": "Try Abjadi",
+    "analysisAlt": "AI text analysis screen",
+    "scanAlt": "Inscription scanning camera"
+  },
+  "Demo": {
+    "eyebrow": "Product demo",
+    "title": "See Abjadi in action",
+    "copy": "From photographing an inscription to reading letters and documenting the find — in a short video.",
+    "videoTitle": "Abjadi app demo video"
+  },
+  "Download": {
+    "title": "Start your journey with Abjadi",
+    "copy": "The mobile app for discovering, reading, and documenting ancient scripts.",
+    "appStoreSoon": "App Store coming soon",
+    "playStoreSoon": "Google Play coming soon",
+    "access": "If you need access, send an email to",
+    "accessEmail": "info@abjadi.ai"
+  },
+  "Footer": {
+    "rights": "© {year} Abjadi"
+  },
+  "NotFound": {
+    "title": "Page not found",
+    "copy": "Check the link or go back to the home page."
+  }
+}
