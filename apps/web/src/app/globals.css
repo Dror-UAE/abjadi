@@ -437,8 +437,8 @@ html[dir="ltr"] .hero__lede {
 
 .steps {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(1.25rem, 3vw, 2rem);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(1rem, 2.5vw, 1.75rem);
   align-items: start;
 }
 
@@ -465,10 +465,14 @@ html[dir="ltr"] .hero__lede {
 }
 
 .step:nth-child(2) .step__phone img {
-  animation-delay: 0.6s;
+  animation-delay: 0.4s;
 }
 
 .step:nth-child(3) .step__phone img {
+  animation-delay: 0.8s;
+}
+
+.step:nth-child(4) .step__phone img {
   animation-delay: 1.2s;
 }
 
@@ -635,9 +639,13 @@ html[dir="ltr"] .hero__lede {
   }
 
   .steps {
-    grid-template-columns: 1fr;
-    max-width: 240px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 520px;
     margin-inline: auto;
+  }
+
+  .step__phone {
+    max-width: 180px;
   }
 
   .band__inner {

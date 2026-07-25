@@ -33,3 +33,6 @@ next-env.d.ts
 # coverage / test
 coverage
 .nyc_output
+
+# large source videos (use mp4 in public)
+apps/web/public/*.mov

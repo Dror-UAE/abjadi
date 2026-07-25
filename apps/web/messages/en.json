@@ -31,6 +31,9 @@
     "captureTitle": "Capture the text",
     "captureCopy": "Point the camera and place the letters inside the frame.",
     "captureAlt": "Abjadi home screen for capturing text",
+    "scanTitle": "AI scan",
+    "scanCopy": "Prepares the image and detects the text region and letters.",
+    "scanAlt": "AI text analysis screen while scanning",
     "readTitle": "Read the meaning",
     "readCopy": "It recognizes the letters and shows the translated text.",
     "readAlt": "Analysis result with discovered letters and meaning",
@@ -43,7 +46,7 @@
     "copy": "From preparing the image to recognizing letters and translating the text — step by step.",
     "cta": "Try Abjadi",
     "analysisAlt": "AI text analysis screen",
-    "scanAlt": "Inscription scanning camera"
+    "scanAlt": "Abjadi welcome screen"
   },
   "Demo": {
     "eyebrow": "Product demo",

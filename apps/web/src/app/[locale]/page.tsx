@@ -89,6 +89,20 @@ export default async function HomePage({ params }: Props) {
               <p>{tHow("captureCopy")}</p>
             </article>
 
+            <article className="step" id="scan">
+              <div className="step__phone">
+                <Image
+                  src="/mobile-mock-4.png"
+                  alt={tHow("scanAlt")}
+                  width={220}
+                  height={476}
+                  sizes="220px"
+                />
+              </div>
+              <h3>{tHow("scanTitle")}</h3>
+              <p>{tHow("scanCopy")}</p>
+            </article>
+
             <article className="step" id="read">
               <div className="step__phone">
                 <Image
@@ -152,7 +166,7 @@ export default async function HomePage({ params }: Props) {
                 sizes="200px"
               />
               <Image
-                src="/mobile-mock-3.png"
+                src="/mobile-mock-1.png"
                 alt={tProcess("scanAlt")}
                 width={200}
                 height={432}
