@@ -62,6 +62,38 @@
     "access": "للوصول إلى التطبيق، راسلنا على",
     "accessEmail": "info@abjadi.ai"
   },
+  "EarlyAccess": {
+    "title": "الوصول المبكر",
+    "description": "أبجدي حاليًا في مرحلة بيتا خاصة. انضم إلى قائمة الانتظار للحصول على وصول مبكر ومساعدتنا في حفظ ورقمنة النقوش المسندية القديمة.",
+    "fields": {
+      "name": "الاسم الكامل (اختياري)",
+      "email": "البريد الإلكتروني",
+      "userType": "من أنت؟",
+      "selectOption": "اختر خيارًا",
+      "otherType": "يرجى التوضيح",
+      "organizationName": "اسم الجهة"
+    },
+    "userTypes": {
+      "individual-researcher": "باحث فردي",
+      "student": "طالب",
+      "archaeologist": "عالم آثار",
+      "historian": "مؤرخ",
+      "museum": "متحف",
+      "government-organization": "جهة حكومية",
+      "university-research-institution": "جامعة / مؤسسة بحثية",
+      "other": "أخرى"
+    },
+    "submit": "طلب وصول مبكر",
+    "loading": "جاري إرسال الطلب...",
+    "success": "شكرًا لك! تم استلام طلبك وسنتواصل معك عند توفر الوصول.",
+    "errors": {
+      "email": "يرجى إدخال بريد إلكتروني صحيح.",
+      "userType": "يرجى اختيار من أنت.",
+      "otherType": "يرجى توضيح من أنت.",
+      "organizationName": "يرجى إدخال اسم الجهة.",
+      "request": "حدث خطأ ما. يرجى المحاولة مرة أخرى بعد قليل."
+    }
+  },
   "Footer": {
     "rights": "© {year} أبجدي"
   },

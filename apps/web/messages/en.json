@@ -62,6 +62,38 @@
     "access": "If you need access, send an email to",
     "accessEmail": "info@abjadi.ai"
   },
+  "EarlyAccess": {
+    "title": "Early Access",
+    "description": "Abjadi is currently in private beta. Join the waitlist to get early access and help us preserve and digitize ancient Musnad inscriptions.",
+    "fields": {
+      "name": "Full Name (optional)",
+      "email": "Email Address",
+      "userType": "Who are you?",
+      "selectOption": "Select an option",
+      "otherType": "Please specify",
+      "organizationName": "Organization Name"
+    },
+    "userTypes": {
+      "individual-researcher": "Individual Researcher",
+      "student": "Student",
+      "archaeologist": "Archaeologist",
+      "historian": "Historian",
+      "museum": "Museum",
+      "government-organization": "Government Organization",
+      "university-research-institution": "University / Research Institution",
+      "other": "Other"
+    },
+    "submit": "Request Early Access",
+    "loading": "Sending request...",
+    "success": "Thank you! We've received your request and will contact you when access becomes available.",
+    "errors": {
+      "email": "Please enter a valid email address.",
+      "userType": "Please select who you are.",
+      "otherType": "Please tell us who you are.",
+      "organizationName": "Please enter your organization name.",
+      "request": "Something went wrong. Please try again in a moment."
+    }
+  },
   "Footer": {
     "rights": "© {year} Abjadi"
   },

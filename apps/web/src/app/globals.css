@@ -592,6 +592,72 @@ html[dir="ltr"] .hero__lede {
   color: var(--ink-soft);
 }
 
+.early-access-form {
+  width: min(560px, calc(100% - 2rem));
+  margin-inline: auto;
+  padding: 1.4rem;
+  border-radius: 22px;
+  background: rgb(255 250 243 / 80%);
+  border: 1px solid rgb(42 28 20 / 10%);
+  box-shadow: 0 16px 36px rgb(42 28 20 / 9%);
+  display: grid;
+  gap: 0.9rem;
+  text-align: start;
+}
+
+.early-access-form__field {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.early-access-form__field span {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.early-access-form__field input,
+.early-access-form__field select {
+  width: 100%;
+  min-height: 2.9rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid rgb(42 28 20 / 16%);
+  background: var(--white);
+  color: var(--ink);
+  font: inherit;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.early-access-form__field input:focus,
+.early-access-form__field select:focus {
+  border-color: var(--teal-deep);
+  box-shadow: 0 0 0 3px rgb(123 168 154 / 20%);
+  outline: none;
+}
+
+.early-access-form__message {
+  margin: 0.15rem 0 0;
+  font-size: 0.92rem;
+}
+
+.early-access-form__message--error {
+  color: #9d2e22;
+}
+
+.early-access-form__message--success {
+  color: #236246;
+}
+
+.early-access-form__submit {
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.early-access-form__submit:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 .closing__actions {
   display: flex;
   justify-content: center;
@@ -664,6 +730,12 @@ html[dir="ltr"] .hero__lede {
 
   .band__visual img:first-child {
     transform: none;
+  }
+
+  .early-access-form {
+    width: 100%;
+    padding: 1.15rem;
+    border-radius: 18px;
   }
 }
 

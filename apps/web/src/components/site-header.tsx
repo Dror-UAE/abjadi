@@ -54,7 +54,7 @@ export function SiteHeader() {
           >
             {t("locale")}
           </Link>
-          <a className="site-header__cta" href="#download">
+          <a className="site-header__cta" href="#early-access">
             {t("cta")}
           </a>
         </div>

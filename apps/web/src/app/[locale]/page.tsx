@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { DemoVideo } from "../../components/demo-video";
+import { EarlyAccessForm } from "../../components/early-access-form";
 import { SiteHeader } from "../../components/site-header";
 import { isAppLocale, routing } from "../../i18n/routing";
 
@@ -18,7 +19,7 @@ export default async function HomePage({ params }: Props) {
   const tHow = await getTranslations("How");
   const tDemo = await getTranslations("Demo");
   const tProcess = await getTranslations("Process");
-  const tDownload = await getTranslations("Download");
+  const tEarlyAccess = await getTranslations("EarlyAccess");
   const tFooter = await getTranslations("Footer");
 
   return (
@@ -54,7 +55,7 @@ export default async function HomePage({ params }: Props) {
           <p className="hero__lede">{tHero("lede")}</p>
 
           <div className="hero__actions">
-            <a className="btn btn--primary" href="#download">
+            <a className="btn btn--primary" href="#early-access">
               {tHero("start")}
             </a>
             <a className="btn btn--ghost" href="#how">
@@ -153,7 +154,7 @@ export default async function HomePage({ params }: Props) {
             <div className="band__copy">
               <h2 id="process-title">{tProcess("title")}</h2>
               <p>{tProcess("copy")}</p>
-              <a className="btn btn--primary" href="#download">
+              <a className="btn btn--primary" href="#early-access">
                 {tProcess("cta")}
               </a>
             </div>
@@ -176,11 +177,7 @@ export default async function HomePage({ params }: Props) {
           </div>
         </section>
 
-        <section
-          className="closing"
-          id="download"
-          aria-labelledby="download-title"
-        >
+        <section className="closing" id="early-access" aria-labelledby="early-access-title">
           <Image
             className="closing__logo"
             src="/logo.png"
@@ -188,40 +185,9 @@ export default async function HomePage({ params }: Props) {
             width={72}
             height={72}
           />
-          <h2 id="download-title">{tDownload("title")}</h2>
-          <p>{tDownload("copy")}</p>
-          <div className="closing__actions">
-            <a
-              className="btn btn--solid"
-              href="#"
-              aria-label={tDownload("appStoreSoon")}
-            >
-              App Store{" "}
-              <Image
-                src="/App_Store.svg.webp"
-                alt=""
-                width={16}
-                height={16}
-              />
-            </a>
-            <a
-              className="btn btn--solid"
-              href="#"
-              aria-label={tDownload("playStoreSoon")}
-            >
-              Google Play{" "}
-              <Image
-                src="/Google_Play_icon.svg.webp"
-                alt=""
-                width={16}
-                height={16}
-              />
-            </a>
-          </div>
-          <p className="closing__access">
-            {tDownload("access")}{" "}
-            <a href="mailto:info@abjadi.ai">{tDownload("accessEmail")}</a>
-          </p>
+          <h2 id="early-access-title">{tEarlyAccess("title")}</h2>
+          <p>{tEarlyAccess("description")}</p>
+          <EarlyAccessForm />
         </section>
       </main>
 
