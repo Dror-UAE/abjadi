@@ -5,8 +5,8 @@ import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 
 import { isModelReady } from "./lib/model-paths.js";
-import { persistDocumentation, persistScanAndOcr } from "./lib/persist.js";
-import { runPaperOcr } from "./lib/run-ocr.js";
+import { createOcrJob, getOcrJob, runOcrAndPersist, warmOcrModel } from "./lib/ocr-jobs.js";
+import { persistDocumentation } from "./lib/persist.js";
 import { getScanById, listScans } from "./lib/scans.js";
 import { isSupabaseConfigured } from "./lib/supabase.js";
 
@@ -123,36 +123,71 @@ app.post("/ocr", async (c) => {
     );
   }
 
-  const result = await runPaperOcr(parsed.bytes, parsed.filename);
+  const asyncMode =
+    c.req.query("async") === "1" ||
+    c.req.header("x-abjadi-ocr-async") === "1";
+
+  if (asyncMode) {
+    const job = createOcrJob(parsed.bytes, parsed.filename);
+    return c.json(
+      {
+        ok: true,
+        async: true,
+        jobId: job.id,
+        status: job.status,
+        pollUrl: `/ocr/jobs/${job.id}`,
+      },
+      202
+    );
+  }
+
+  const result = await runOcrAndPersist(parsed.bytes, parsed.filename);
 
   if (!result.ok) {
     const status = result.error === "model_not_ready" ? 503 : 500;
     return c.json(result, status);
   }
 
-  let scanId: string | undefined;
-  let publicId: string | undefined;
-  let persistError: string | undefined;
+  return c.json(result);
+});
 
-  if (isSupabaseConfigured()) {
-    try {
-      const saved = await persistScanAndOcr(parsed.bytes, parsed.filename, result);
-      if (saved) {
-        scanId = saved.scanId;
-        publicId = saved.publicId;
-      }
-    } catch (err) {
-      persistError = err instanceof Error ? err.message : String(err);
-      console.error("[ocr] persist failed:", persistError);
-    }
+app.get("/ocr/jobs/:id", (c) => {
+  const id = c.req.param("id")?.trim();
+  if (!id) {
+    return c.json({ ok: false, error: "missing_job_id" }, 400);
+  }
+
+  const job = getOcrJob(id);
+  if (!job) {
+    return c.json({ ok: false, error: "job_not_found" }, 404);
+  }
+
+  if (job.status === "succeeded" && job.result) {
+    return c.json({
+      ...job.result,
+      jobId: job.id,
+      status: job.status,
+    });
+  }
+
+  if (job.status === "failed") {
+    return c.json(
+      {
+        ok: false,
+        jobId: job.id,
+        status: job.status,
+        error: job.error ?? "ocr_failed",
+        detail: job.detail,
+      },
+      500
+    );
   }
 
   return c.json({
-    ...result,
-    scanId,
-    publicId,
-    persisted: Boolean(scanId),
-    ...(persistError ? { persistError } : {}),
+    ok: true,
+    jobId: job.id,
+    status: job.status,
+    pending: true,
   });
 });
 
@@ -273,4 +308,5 @@ serve({ fetch: app.fetch, port, hostname }, () => {
   console.log(`API listening on http://${hostname}:${port}`);
   console.log(`Model ready: ${isModelReady()}`);
   console.log(`Supabase: ${isSupabaseConfigured() ? "configured" : "not configured"}`);
+  warmOcrModel();
 });

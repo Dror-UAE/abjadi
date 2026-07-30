@@ -333,6 +333,7 @@ export function AnalyzingScreen() {
         }, 450);
       } catch (err) {
         if (controller.signal.aborted || finishedRef.current) return;
+        if (err instanceof Error && err.name === 'AbortError') return;
         const message =
           err instanceof ApiError
             ? err.message
@@ -357,7 +358,7 @@ export function AnalyzingScreen() {
       stepTimers.forEach(clearTimeout);
       clearInterval(tick);
     };
-  }, [imageUri, progress, retryKey]);
+  }, [imageUri, retryKey]);
 
   const steps: Step[] = STEP_LABELS.map((label, index) => ({
     id: String(index),

@@ -2,6 +2,7 @@ import type {
   DocumentationPayload,
   DocumentationResponse,
   OcrResponse,
+  OcrSuccess,
   ScanDetailResponse,
   ScanListResponse,
 } from './ocr-types';
@@ -55,8 +56,8 @@ async function imageUriToBase64Payload(imageUri: string): Promise<{
   try {
     const optimized = await ImageManipulator.manipulateAsync(
       imageUri,
-      [{ resize: { width: 1600 } }],
-      { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
+      [{ resize: { width: 1280 } }],
+      { compress: 0.65, format: ImageManipulator.SaveFormat.JPEG }
     );
     uploadUri = optimized.uri;
   } catch {
@@ -103,35 +104,111 @@ export async function checkApiHealth(signal?: AbortSignal): Promise<boolean> {
   return Boolean(data.modelReady);
 }
 
+type OcrStartResponse = {
+  ok?: boolean;
+  async?: boolean;
+  jobId?: string;
+  error?: string;
+  detail?: string;
+  text?: string;
+  status?: string;
+  pending?: boolean;
+} & Partial<OcrSuccess>;
+
+type OcrPollResponse = OcrResponse & {
+  status?: string;
+  pending?: boolean;
+  jobId?: string;
+};
+
 export async function uploadOcr(imageUri: string, signal?: AbortSignal): Promise<OcrResponse> {
   const payload = await imageUriToBase64Payload(imageUri);
 
-  let response: Response;
+  let startResponse: Response;
   try {
-    response = await fetch(`${getApiBaseUrl()}/ocr`, {
+    startResponse = await fetch(`${getApiBaseUrl()}/ocr?async=1`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'x-abjadi-ocr-async': '1',
+      },
       body: JSON.stringify(payload),
       signal,
     });
-  } catch {
+  } catch (err) {
+    if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) {
+      throw err;
+    }
     throw new ApiError('فشل رفع الصورة إلى الخادم. تحقق من الإنترنت أو جرّب صورة أصغر.');
   }
 
-  let data: OcrResponse | null = null;
+  let startData: OcrStartResponse | null = null;
   try {
-    data = (await response.json()) as OcrResponse;
+    startData = (await startResponse.json()) as OcrStartResponse;
   } catch {
-    throw new ApiError('تعذر قراءة رد الخادم', response.status);
+    throw new ApiError('تعذر قراءة رد الخادم', startResponse.status);
   }
 
-  if (!response.ok) {
-    const detail =
-      data && !data.ok ? data.detail || data.error : `HTTP ${response.status}`;
-    throw new ApiError(detail || 'فشل التحليل', response.status);
+  // Older/sync servers may still return full OCR immediately.
+  if (startResponse.ok && startData.ok && !startData.async && startData.text) {
+    return startData as OcrResponse;
   }
 
-  return data;
+  if ((!startResponse.ok && startResponse.status !== 202) || !startData.jobId) {
+    const detail = startData.detail || startData.error || `HTTP ${startResponse.status}`;
+    throw new ApiError(detail || 'فشل بدء التحليل', startResponse.status);
+  }
+
+  const jobId = startData.jobId;
+  const startedAt = Date.now();
+  const maxWaitMs = 180_000;
+
+  while (Date.now() - startedAt < maxWaitMs) {
+    if (signal?.aborted) {
+      throw new DOMException('Aborted', 'AbortError');
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    let pollResponse: Response;
+    try {
+      pollResponse = await fetch(`${getApiBaseUrl()}/ocr/jobs/${encodeURIComponent(jobId)}`, {
+        signal,
+      });
+    } catch (err) {
+      if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) {
+        throw err;
+      }
+      // Transient network blip — keep polling.
+      continue;
+    }
+
+    let pollData: OcrPollResponse | null = null;
+    try {
+      pollData = (await pollResponse.json()) as OcrPollResponse;
+    } catch {
+      continue;
+    }
+
+    if (!pollData) continue;
+
+    if (pollData.ok && pollData.status === 'succeeded') {
+      return pollData;
+    }
+
+    if (
+      pollData.ok &&
+      (pollData.status === 'queued' || pollData.status === 'running' || pollData.pending)
+    ) {
+      continue;
+    }
+
+    if (!pollData.ok) {
+      throw new ApiError(pollData.detail || pollData.error || 'فشل التحليل', pollResponse.status);
+    }
+  }
+
+  throw new ApiError('انتهت مهلة التحليل على الخادم. أعد المحاولة.');
 }
 
 export async function submitDocumentation(
