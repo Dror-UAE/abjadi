@@ -24,7 +24,11 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.abjadi.app",
       "versionCode": 4,
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "output": "static",
@@ -67,6 +71,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "98ce6c25-3794-4e15-ba01-f345a01cda94"
+      }
+    },
+    "owner": "ar7ab"
   }
 }
