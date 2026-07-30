@@ -128,17 +128,25 @@ app.post("/ocr", async (c) => {
     c.req.header("x-abjadi-ocr-async") === "1";
 
   if (asyncMode) {
-    const job = createOcrJob(parsed.bytes, parsed.filename);
-    return c.json(
-      {
-        ok: true,
-        async: true,
-        jobId: job.id,
-        status: job.status,
-        pollUrl: `/ocr/jobs/${job.id}`,
-      },
-      202
-    );
+    try {
+      const job = await createOcrJob(parsed.bytes, parsed.filename);
+      return c.json(
+        {
+          ok: true,
+          async: true,
+          jobId: job.id,
+          status: job.status,
+          pollUrl: `/ocr/jobs/${job.id}`,
+        },
+        202
+      );
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      return c.json(
+        { ok: false, error: "job_create_failed", detail },
+        500
+      );
+    }
   }
 
   const result = await runOcrAndPersist(parsed.bytes, parsed.filename);
@@ -151,13 +159,13 @@ app.post("/ocr", async (c) => {
   return c.json(result);
 });
 
-app.get("/ocr/jobs/:id", (c) => {
+app.get("/ocr/jobs/:id", async (c) => {
   const id = c.req.param("id")?.trim();
   if (!id) {
     return c.json({ ok: false, error: "missing_job_id" }, 400);
   }
 
-  const job = getOcrJob(id);
+  const job = await getOcrJob(id);
   if (!job) {
     return c.json({ ok: false, error: "job_not_found" }, 404);
   }

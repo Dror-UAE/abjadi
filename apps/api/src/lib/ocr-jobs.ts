@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { persistScanAndOcr } from "./persist.js";
 import { runPaperOcr, type OcrError, type OcrResult } from "./run-ocr.js";
 import { isModelReady, MODEL_PYTHON, MODEL_ROOT } from "./model-paths.js";
-import { isSupabaseConfigured } from "./supabase.js";
+import { getSupabase, isSupabaseConfigured } from "./supabase.js";
 import { spawn } from "node:child_process";
 
 export type OcrJobStatus = "queued" | "running" | "succeeded" | "failed";
@@ -28,6 +28,8 @@ export type OcrJobRecord = {
 const jobs = new Map<string, OcrJobRecord>();
 const MAX_JOBS = 100;
 const JOB_TTL_MS = 30 * 60 * 1000;
+const JOB_BUCKET = "scan-images";
+const JOB_PREFIX = "_ocr-jobs";
 
 function pruneJobs(): void {
   const cutoff = Date.now() - JOB_TTL_MS;
@@ -41,9 +43,26 @@ function pruneJobs(): void {
   }
 }
 
-function touch(job: OcrJobRecord): void {
+async function saveJob(job: OcrJobRecord): Promise<void> {
   job.updatedAt = Date.now();
   jobs.set(job.id, job);
+
+  const supabase = getSupabase();
+  if (!supabase) return;
+
+  const path = `${JOB_PREFIX}/${job.id}.json`;
+  const body = Buffer.from(JSON.stringify(job), "utf8");
+  const { error } = await supabase.storage
+    .from(JOB_BUCKET)
+    .upload(path, body, {
+      contentType: "application/json",
+      upsert: true,
+    });
+
+  if (error) {
+    console.error(`[ocr-job] failed to persist ${job.id}:`, error.message);
+    throw new Error(`Could not persist OCR job: ${error.message}`);
+  }
 }
 
 async function finalizeOcr(
@@ -82,7 +101,7 @@ async function runJob(jobId: string, imageBytes: Buffer, filename: string): Prom
   if (!job) return;
 
   job.status = "running";
-  touch(job);
+  await saveJob(job);
 
   try {
     const result = await runPaperOcr(imageBytes, filename);
@@ -90,22 +109,29 @@ async function runJob(jobId: string, imageBytes: Buffer, filename: string): Prom
       job.status = "failed";
       job.error = result.error;
       job.detail = result.detail;
-      touch(job);
+      await saveJob(job);
       return;
     }
 
     job.result = await finalizeOcr(imageBytes, filename, result);
     job.status = "succeeded";
-    touch(job);
+    await saveJob(job);
   } catch (err) {
     job.status = "failed";
     job.error = "ocr_failed";
     job.detail = err instanceof Error ? err.message : String(err);
-    touch(job);
+    try {
+      await saveJob(job);
+    } catch (persistErr) {
+      console.error("[ocr-job] failed to save error state:", persistErr);
+    }
   }
 }
 
-export function createOcrJob(imageBytes: Buffer, filename: string): OcrJobRecord {
+export async function createOcrJob(
+  imageBytes: Buffer,
+  filename: string
+): Promise<OcrJobRecord> {
   pruneJobs();
   const id = randomUUID();
   const now = Date.now();
@@ -115,7 +141,9 @@ export function createOcrJob(imageBytes: Buffer, filename: string): OcrJobRecord
     createdAt: now,
     updatedAt: now,
   };
-  jobs.set(id, job);
+
+  // Persist before responding 202, so a poll routed to another Fly machine can find it.
+  await saveJob(job);
 
   // Fire-and-forget; client polls GET /ocr/jobs/:id
   void runJob(id, imageBytes, filename);
@@ -123,9 +151,30 @@ export function createOcrJob(imageBytes: Buffer, filename: string): OcrJobRecord
   return job;
 }
 
-export function getOcrJob(id: string): OcrJobRecord | undefined {
+export async function getOcrJob(id: string): Promise<OcrJobRecord | undefined> {
   pruneJobs();
-  return jobs.get(id);
+  const local = jobs.get(id);
+
+  const supabase = getSupabase();
+  if (!supabase) return local;
+
+  const path = `${JOB_PREFIX}/${id}.json`;
+  const { data, error } = await supabase.storage.from(JOB_BUCKET).download(path);
+  if (error || !data) {
+    if (error && !error.message.toLowerCase().includes("not found")) {
+      console.error(`[ocr-job] failed to load ${id}:`, error.message);
+    }
+    return local;
+  }
+
+  try {
+    const job = JSON.parse(await data.text()) as OcrJobRecord;
+    jobs.set(job.id, job);
+    return job;
+  } catch (err) {
+    console.error(`[ocr-job] invalid persisted job ${id}:`, err);
+    return undefined;
+  }
 }
 
 /** Import torch/model in a short-lived process so first OCR is warmer. */
