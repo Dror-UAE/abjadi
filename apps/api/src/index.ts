@@ -266,7 +266,7 @@ app.post("/documentations", async (c) => {
   }
 });
 
-const port = Number(process.env.PORT ?? 3001);
+const port = Number(process.env.PORT ?? 3500);
 const hostname = process.env.HOST ?? "0.0.0.0";
 
 serve({ fetch: app.fetch, port, hostname }, () => {

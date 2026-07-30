@@ -41,8 +41,8 @@ WORKDIR /app/apps/api
 
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
-ENV PORT=3001
+ENV PORT=3500
 
-EXPOSE 3001
+EXPOSE 3500
 
 CMD ["node", "dist/index.js"]
