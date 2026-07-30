@@ -6,28 +6,39 @@ import { useEffect, useState } from "react";
 import { Link, usePathname } from "../i18n/navigation";
 import type { AppLocale } from "../i18n/routing";
 
-export function SiteHeader() {
+type Props = {
+  solid?: boolean;
+};
+
+export function SiteHeader({ solid = false }: Props) {
   const t = useTranslations("Header");
   const tBrand = useTranslations("Brand");
   const locale = useLocale() as AppLocale;
   const pathname = usePathname();
-  const [scrolled, setScrolled] = useState(false);
+  const isHome = pathname === "/";
+  const [scrolled, setScrolled] = useState(solid || !isHome);
 
   const nextLocale: AppLocale = locale === "ar" ? "en" : "ar";
 
   useEffect(() => {
+    if (solid || !isHome) {
+      setScrolled(true);
+      return;
+    }
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [solid, isHome]);
 
   const links = [
-    { href: "#how", label: t("how") },
-    { href: "#demo", label: t("demo") },
-    { href: "#read", label: t("read") },
-    { href: "#archive", label: t("archive") },
+    { href: isHome ? "#how" : "/#how", label: t("how") },
+    { href: isHome ? "#demo" : "/#demo", label: t("demo") },
+    { href: isHome ? "#read" : "/#read", label: t("read") },
+    { href: isHome ? "#archive" : "/#archive", label: t("archive") },
   ];
+
+  const earlyAccessHref = isHome ? "#early-access" : "/#early-access";
 
   return (
     <header className={`site-header${scrolled ? " site-header--solid" : ""}`}>
@@ -54,7 +65,7 @@ export function SiteHeader() {
           >
             {t("locale")}
           </Link>
-          <a className="site-header__cta" href="#early-access">
+          <a className="site-header__cta" href={earlyAccessHref}>
             {t("cta")}
           </a>
         </div>

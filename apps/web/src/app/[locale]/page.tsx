@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { DemoVideo } from "../../components/demo-video";
 import { EarlyAccessForm } from "../../components/early-access-form";
 import { SiteHeader } from "../../components/site-header";
+import { Link } from "../../i18n/navigation";
 import { isAppLocale, routing } from "../../i18n/routing";
 
 type Props = {
@@ -192,6 +193,10 @@ export default async function HomePage({ params }: Props) {
       </main>
 
       <footer className="site-footer">
+        <nav className="site-footer__links" aria-label={tFooter("privacy")}>
+          <Link href="/privacy">{tFooter("privacy")}</Link>
+          <Link href="/support">{tFooter("support")}</Link>
+        </nav>
         <p>{tFooter("rights", { year: new Date().getFullYear() })}</p>
       </footer>
     </>

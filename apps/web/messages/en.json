@@ -95,7 +95,59 @@
     }
   },
   "Footer": {
-    "rights": "© {year} Abjadi"
+    "rights": "© {year} Abjadi",
+    "privacy": "Privacy",
+    "support": "Support"
+  },
+  "Privacy": {
+    "metaTitle": "Privacy Policy — Abjadi",
+    "metaDescription": "How Abjadi collects, uses, and protects your information.",
+    "title": "Privacy Policy",
+    "updated": "Last updated: July 30, 2026",
+    "intro": "Abjadi (“we”, “us”) helps you photograph, read, and document ancient inscriptions. This policy explains what information we process when you use the Abjadi website and mobile app.",
+    "sections": {
+      "collectTitle": "Information we collect",
+      "collectBody": "Depending on how you use Abjadi, we may process: photos and images you upload for inscription recognition; text and results generated from those images; documentation details you choose to save (such as title, location, script type, or notes); early-access or contact details you submit (name, email, organization, and role); and basic technical data needed to operate the service (such as device type, app version, and request logs).",
+      "useTitle": "How we use information",
+      "useBody": "We use this information to run OCR and transliteration, show you results, store scans and documentation you create, improve recognition quality and reliability, respond to support requests, and manage early access. We do not sell your personal information.",
+      "storageTitle": "Storage and processing",
+      "storageBody": "Images and related scan data may be stored securely with our cloud providers so the app can show history, regenerate signed image links, and keep your documentation. Processing may occur on our servers and trusted infrastructure providers.",
+      "shareTitle": "Sharing",
+      "shareBody": "We share information only with service providers that help us operate Abjadi (for example hosting, database, and storage), when required by law, or to protect the safety and integrity of the service. We do not share your scans publicly unless you choose to.",
+      "retentionTitle": "Retention",
+      "retentionBody": "We keep information for as long as needed to provide the service and maintain your saved scans and documentation, unless you ask us to delete it or a longer period is required by law.",
+      "rightsTitle": "Your choices",
+      "rightsBody": "You can request access to, correction of, or deletion of personal information associated with your use of Abjadi by contacting us. If you uploaded an image by mistake, contact support and we will help remove it where feasible.",
+      "childrenTitle": "Children",
+      "childrenBody": "Abjadi is not directed at children under 13, and we do not knowingly collect personal information from children under 13.",
+      "changesTitle": "Changes",
+      "changesBody": "We may update this policy from time to time. The “Last updated” date at the top of this page will change when we do.",
+      "contactTitle": "Contact",
+      "contactBody": "For privacy questions, email us at <email></email>."
+    },
+    "email": "info@abjadi.ai"
+  },
+  "Support": {
+    "metaTitle": "Support — Abjadi",
+    "metaDescription": "Get help with the Abjadi app for reading and documenting ancient inscriptions.",
+    "title": "Support",
+    "lede": "Need help with Abjadi? We are here for account access, scanning issues, and documentation questions.",
+    "contactTitle": "Contact us",
+    "contactCopy": "Email <email></email> and include your device model, app version, and a short description of the issue. Attach a sample image when relevant.",
+    "email": "info@abjadi.ai",
+    "emailCta": "Email support",
+    "topicsTitle": "Common topics",
+    "topics": {
+      "scanTitle": "Scanning an inscription",
+      "scanBody": "Make sure the letters are sharp, well lit, and inside the frame. Try a closer crop if recognition looks incomplete.",
+      "historyTitle": "History and documentation",
+      "historyBody": "Saved scans and documentation appear in the app after a successful analysis. If something is missing, check your connection and try refreshing.",
+      "accessTitle": "Early access",
+      "accessBody": "Abjadi is currently in private beta. Request access from the website waitlist, or email us if you already applied and need a status update.",
+      "privacyTitle": "Privacy",
+      "privacyBody": "Read how we handle photos and account data in our Privacy Policy.",
+      "privacyLink": "View privacy policy"
+    }
   },
   "NotFound": {
     "title": "Page not found",

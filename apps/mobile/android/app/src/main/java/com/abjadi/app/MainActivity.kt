@@ -1,4 +1,4 @@
-package com.ar7ab.abjadi
+package com.abjadi.app
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

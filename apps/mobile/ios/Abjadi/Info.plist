@@ -28,7 +28,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>abjadi</string>
-				<string>com.ar7ab.abjadi</string>
+				<string>com.abjadi.app</string>
 			</array>
 		</dict>
 	</array>

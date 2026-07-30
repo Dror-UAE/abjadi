@@ -8,6 +8,20 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  async redirects() {
+    return [
+      {
+        source: "/privacy",
+        destination: "/ar/privacy",
+        permanent: false,
+      },
+      {
+        source: "/support",
+        destination: "/ar/support",
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default withNextIntl(nextConfig);

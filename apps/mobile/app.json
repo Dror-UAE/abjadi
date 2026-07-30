@@ -8,7 +8,7 @@
     "scheme": "abjadi",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.ar7ab.abjadi",
+      "bundleIdentifier": "com.abjadi.app",
       "buildNumber": "3",
       "infoPlist": {
         "NSAppTransportSecurity": {
@@ -22,7 +22,7 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ar7ab.abjadi",
+      "package": "com.abjadi.app",
       "versionCode": 4,
       "usesCleartextTraffic": true
     },
