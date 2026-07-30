@@ -112,19 +112,48 @@ export async function setScanDocumentationTitle(
 
 /** Pull documentation titles from server summaries onto matching local scans. */
 export async function mergeRemoteDocumentationTitles(
-  remoteScans: Array<{ id: string; documentationTitle?: string }>
+  remoteScans: Array<{
+    id: string;
+    documentationTitle?: string;
+    sourceImageUrl?: string;
+    overlayImageUrl?: string;
+  }>
 ): Promise<void> {
   await loadScans();
   let changed = false;
 
   for (const remote of remoteScans) {
     const title = remote.documentationTitle?.trim();
-    if (!title) continue;
-
     const local = getScanByServerId(remote.id);
-    if (!local || local.documentationTitle?.trim() === title) continue;
+    if (!local) continue;
 
-    scans.set(local.id, { ...local, documentationTitle: title });
+    const nextTitle = title || local.documentationTitle;
+    const nextSource = remote.sourceImageUrl || local.sourceImageUrl;
+    const nextOverlay = remote.overlayImageUrl || local.overlayImageUrl;
+
+    // If cached imageUri is an old Supabase signed URL, refresh it from latest signed URL.
+    const isSignedSupabaseUrl =
+      local.imageUri.startsWith("https://") &&
+      local.imageUri.includes(".supabase.co/storage/v1/object/sign/");
+    const nextImageUri = isSignedSupabaseUrl
+      ? nextOverlay || nextSource || local.imageUri
+      : local.imageUri || nextOverlay || nextSource || "";
+
+    const hasChanged =
+      nextTitle !== local.documentationTitle ||
+      nextSource !== local.sourceImageUrl ||
+      nextOverlay !== local.overlayImageUrl ||
+      nextImageUri !== local.imageUri;
+
+    if (!hasChanged) continue;
+
+    scans.set(local.id, {
+      ...local,
+      documentationTitle: nextTitle,
+      sourceImageUrl: nextSource,
+      overlayImageUrl: nextOverlay,
+      imageUri: nextImageUri,
+    });
     changed = true;
   }
 

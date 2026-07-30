@@ -5,6 +5,7 @@ import type {
   ScanDetailResponse,
   ScanListResponse,
 } from './ocr-types';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { getApiBaseUrl } from './api-config';
 
 function guessMime(uri: string): string {
@@ -49,7 +50,25 @@ async function imageUriToBase64Payload(imageUri: string): Promise<{
   filename: string;
   mimeType: string;
 }> {
-  const response = await fetch(imageUri);
+  // Reduce upload size for remote APIs (Fly) to avoid request failures on large camera images.
+  let uploadUri = imageUri;
+  try {
+    const optimized = await ImageManipulator.manipulateAsync(
+      imageUri,
+      [{ resize: { width: 1600 } }],
+      { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
+    );
+    uploadUri = optimized.uri;
+  } catch {
+    // Fall back to original URI if manipulation fails.
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(uploadUri);
+  } catch {
+    throw new ApiError('تعذر تجهيز الصورة للرفع. جرّب إعادة التصوير أو اختيار صورة أصغر.');
+  }
   if (!response.ok) {
     throw new ApiError('تعذر قراءة الصورة من الجهاز');
   }
@@ -87,12 +106,17 @@ export async function checkApiHealth(signal?: AbortSignal): Promise<boolean> {
 export async function uploadOcr(imageUri: string, signal?: AbortSignal): Promise<OcrResponse> {
   const payload = await imageUriToBase64Payload(imageUri);
 
-  const response = await fetch(`${getApiBaseUrl()}/ocr`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-    signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${getApiBaseUrl()}/ocr`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal,
+    });
+  } catch {
+    throw new ApiError('فشل رفع الصورة إلى الخادم. تحقق من الإنترنت أو جرّب صورة أصغر.');
+  }
 
   let data: OcrResponse | null = null;
   try {
