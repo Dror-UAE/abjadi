@@ -1,5 +1,5 @@
 app = "abjadi-api"
-primary_region = "fra"
+primary_region = "bom"
 
 [build]
   dockerfile = "Dockerfile"
