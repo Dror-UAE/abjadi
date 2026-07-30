@@ -1,0 +1,138 @@
+{
+  "description": "Lookalike pairs and shape families for Musnad OCR",
+  "version": "0.3.2",
+  "pairs": [
+    {
+      "a": "𐩩",
+      "a_name": "TAW",
+      "b": "𐩯",
+      "b_name": "SAMEKH"
+    },
+    {
+      "a": "𐩬",
+      "a_name": "NUN",
+      "b": "𐩱",
+      "b_name": "ALEF"
+    },
+    {
+      "a": "𐩥",
+      "a_name": "WAW",
+      "b": "𐩲",
+      "b_name": "AYN"
+    },
+    {
+      "a": "𐩨",
+      "a_name": "BETH",
+      "b": "𐩴",
+      "b_name": "GIMEL"
+    },
+    {
+      "a": "𐩠",
+      "a_name": "HE",
+      "b": "𐩡",
+      "b_name": "LAMEDH"
+    },
+    {
+      "a": "𐩫",
+      "a_name": "KAPH",
+      "b": "𐩬",
+      "b_name": "NUN"
+    },
+    {
+      "a": "𐩳",
+      "a_name": "DHADHE",
+      "b": "𐩷",
+      "b_name": "TETH"
+    },
+    {
+      "a": "𐩨",
+      "a_name": "BETH",
+      "b": "𐩷",
+      "b_name": "TETH"
+    },
+    {
+      "a": "𐩨",
+      "a_name": "BETH",
+      "b": "𐩳",
+      "b_name": "DHADHE"
+    }
+  ],
+  "shape_groups": [
+    [
+      "NUM_1",
+      "𐩠",
+      "𐩡",
+      "𐩬",
+      "𐩱"
+    ],
+    [
+      "NUM_2",
+      "NUM_3",
+      "NUM_4",
+      "NUM_5",
+      "NUM_6"
+    ],
+    [
+      "NUM_10",
+      "𐩥",
+      "𐩲",
+      "𐩶"
+    ],
+    [
+      "𐩣",
+      "𐩨",
+      "𐩩",
+      "𐩯",
+      "𐩴"
+    ],
+    [
+      "NUM_50",
+      "𐩤",
+      "𐩫",
+      "𐩬",
+      "𐩱",
+      "𐩴"
+    ],
+    [
+      "𐩥",
+      "𐩷",
+      "𐩸",
+      "𐩹"
+    ],
+    [
+      "𐩠",
+      "𐩨",
+      "𐩴",
+      "𐩵",
+      "𐩹",
+      "𐩺"
+    ],
+    [
+      "𐩧",
+      "𐩺",
+      "𐩻",
+      "𐩼"
+    ],
+    [
+      "𐩦",
+      "𐩩",
+      "𐩪",
+      "𐩯"
+    ],
+    [
+      "𐩥",
+      "𐩧",
+      "𐩰"
+    ],
+    [
+      "𐩢",
+      "𐩭",
+      "𐩮"
+    ],
+    [
+      "NUM_100",
+      "NUM_1000"
+    ]
+  ],
+  "note": "Hard pairs are forced into lookalike re-ranking when prototypes are enabled. Paper OCR disables prototypes and uses CNN + shape fixes."
+}

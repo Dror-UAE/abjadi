@@ -1,0 +1,7 @@
+{
+  "expo.jsEngine": "hermes",
+  "EX_DEV_CLIENT_NETWORK_INSPECTOR": "true",
+  "expo.inlineModules.watchedDirectories": "[]",
+  "expo.inlineModules.xcodeProjectTargets": "{\"mainTarget\":\"Abjadi\",\"targets\":[]}",
+  "expo.camera.barcode-scanner-enabled": "false"
+}

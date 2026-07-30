@@ -1,0 +1,9 @@
+{
+  "extends": "../../packages/typescript-config/node.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "."
+  },
+  "include": ["src", "drizzle.config.ts", "scripts"],
+  "exclude": ["node_modules", "dist", "drizzle"]
+}

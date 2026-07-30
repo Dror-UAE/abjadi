@@ -1,0 +1,389 @@
+{
+  "num_classes": 39,
+  "image_size": 128,
+  "index_to_char": [
+    "𐩠",
+    "𐩡",
+    "𐩢",
+    "𐩣",
+    "𐩤",
+    "𐩥",
+    "𐩦",
+    "𐩧",
+    "𐩨",
+    "𐩩",
+    "𐩪",
+    "𐩫",
+    "𐩬",
+    "𐩭",
+    "𐩮",
+    "𐩯",
+    "𐩰",
+    "𐩱",
+    "𐩲",
+    "𐩳",
+    "𐩴",
+    "𐩵",
+    "𐩶",
+    "𐩷",
+    "𐩸",
+    "𐩹",
+    "𐩺",
+    "𐩻",
+    "𐩼",
+    "NUM_1",
+    "NUM_2",
+    "NUM_3",
+    "NUM_4",
+    "NUM_5",
+    "NUM_6",
+    "NUM_10",
+    "NUM_50",
+    "NUM_100",
+    "NUM_1000"
+  ],
+  "entries": [
+    {
+      "index": 0,
+      "type": "letter",
+      "character": "𐩠",
+      "name": "HE",
+      "codepoint": "U+10A60",
+      "arabic_name": "هاء",
+      "latin_translit": "h"
+    },
+    {
+      "index": 1,
+      "type": "letter",
+      "character": "𐩡",
+      "name": "LAMEDH",
+      "codepoint": "U+10A61",
+      "arabic_name": "لام",
+      "latin_translit": "l"
+    },
+    {
+      "index": 2,
+      "type": "letter",
+      "character": "𐩢",
+      "name": "HETH",
+      "codepoint": "U+10A62",
+      "arabic_name": "حاء",
+      "latin_translit": "ḥ"
+    },
+    {
+      "index": 3,
+      "type": "letter",
+      "character": "𐩣",
+      "name": "MEM",
+      "codepoint": "U+10A63",
+      "arabic_name": "ميم",
+      "latin_translit": "m"
+    },
+    {
+      "index": 4,
+      "type": "letter",
+      "character": "𐩤",
+      "name": "QOPH",
+      "codepoint": "U+10A64",
+      "arabic_name": "قاف",
+      "latin_translit": "q"
+    },
+    {
+      "index": 5,
+      "type": "letter",
+      "character": "𐩥",
+      "name": "WAW",
+      "codepoint": "U+10A65",
+      "arabic_name": "واو",
+      "latin_translit": "w"
+    },
+    {
+      "index": 6,
+      "type": "letter",
+      "character": "𐩦",
+      "name": "SHIN",
+      "codepoint": "U+10A66",
+      "arabic_name": "شين",
+      "latin_translit": "s²"
+    },
+    {
+      "index": 7,
+      "type": "letter",
+      "character": "𐩧",
+      "name": "RESH",
+      "codepoint": "U+10A67",
+      "arabic_name": "راء",
+      "latin_translit": "r"
+    },
+    {
+      "index": 8,
+      "type": "letter",
+      "character": "𐩨",
+      "name": "BETH",
+      "codepoint": "U+10A68",
+      "arabic_name": "باء",
+      "latin_translit": "b"
+    },
+    {
+      "index": 9,
+      "type": "letter",
+      "character": "𐩩",
+      "name": "TAW",
+      "codepoint": "U+10A69",
+      "arabic_name": "تاء",
+      "latin_translit": "t"
+    },
+    {
+      "index": 10,
+      "type": "letter",
+      "character": "𐩪",
+      "name": "SAT",
+      "codepoint": "U+10A6A",
+      "arabic_name": "سين",
+      "latin_translit": "s¹"
+    },
+    {
+      "index": 11,
+      "type": "letter",
+      "character": "𐩫",
+      "name": "KAPH",
+      "codepoint": "U+10A6B",
+      "arabic_name": "كاف",
+      "latin_translit": "k"
+    },
+    {
+      "index": 12,
+      "type": "letter",
+      "character": "𐩬",
+      "name": "NUN",
+      "codepoint": "U+10A6C",
+      "arabic_name": "نون",
+      "latin_translit": "n"
+    },
+    {
+      "index": 13,
+      "type": "letter",
+      "character": "𐩭",
+      "name": "KHETH",
+      "codepoint": "U+10A6D",
+      "arabic_name": "خاء",
+      "latin_translit": "ḫ"
+    },
+    {
+      "index": 14,
+      "type": "letter",
+      "character": "𐩮",
+      "name": "SADHE",
+      "codepoint": "U+10A6E",
+      "arabic_name": "صاد",
+      "latin_translit": "ṣ"
+    },
+    {
+      "index": 15,
+      "type": "letter",
+      "character": "𐩯",
+      "name": "SAMEKH",
+      "codepoint": "U+10A6F",
+      "arabic_name": "سامخ",
+      "latin_translit": "s³"
+    },
+    {
+      "index": 16,
+      "type": "letter",
+      "character": "𐩰",
+      "name": "FE",
+      "codepoint": "U+10A70",
+      "arabic_name": "فاء",
+      "latin_translit": "f"
+    },
+    {
+      "index": 17,
+      "type": "letter",
+      "character": "𐩱",
+      "name": "ALEF",
+      "codepoint": "U+10A71",
+      "arabic_name": "ألف",
+      "latin_translit": "ʾ"
+    },
+    {
+      "index": 18,
+      "type": "letter",
+      "character": "𐩲",
+      "name": "AYN",
+      "codepoint": "U+10A72",
+      "arabic_name": "عين",
+      "latin_translit": "ʿ"
+    },
+    {
+      "index": 19,
+      "type": "letter",
+      "character": "𐩳",
+      "name": "DHADHE",
+      "codepoint": "U+10A73",
+      "arabic_name": "ضاد",
+      "latin_translit": "ḍ"
+    },
+    {
+      "index": 20,
+      "type": "letter",
+      "character": "𐩴",
+      "name": "GIMEL",
+      "codepoint": "U+10A74",
+      "arabic_name": "جيم",
+      "latin_translit": "g"
+    },
+    {
+      "index": 21,
+      "type": "letter",
+      "character": "𐩵",
+      "name": "DALETH",
+      "codepoint": "U+10A75",
+      "arabic_name": "دال",
+      "latin_translit": "d"
+    },
+    {
+      "index": 22,
+      "type": "letter",
+      "character": "𐩶",
+      "name": "GHAYN",
+      "codepoint": "U+10A76",
+      "arabic_name": "غين",
+      "latin_translit": "ġ"
+    },
+    {
+      "index": 23,
+      "type": "letter",
+      "character": "𐩷",
+      "name": "TETH",
+      "codepoint": "U+10A77",
+      "arabic_name": "طاء",
+      "latin_translit": "ṭ"
+    },
+    {
+      "index": 24,
+      "type": "letter",
+      "character": "𐩸",
+      "name": "ZAYN",
+      "codepoint": "U+10A78",
+      "arabic_name": "زاي",
+      "latin_translit": "z"
+    },
+    {
+      "index": 25,
+      "type": "letter",
+      "character": "𐩹",
+      "name": "DHALETH",
+      "codepoint": "U+10A79",
+      "arabic_name": "ذال",
+      "latin_translit": "ḏ"
+    },
+    {
+      "index": 26,
+      "type": "letter",
+      "character": "𐩺",
+      "name": "YODH",
+      "codepoint": "U+10A7A",
+      "arabic_name": "ياء",
+      "latin_translit": "y"
+    },
+    {
+      "index": 27,
+      "type": "letter",
+      "character": "𐩻",
+      "name": "THAW",
+      "codepoint": "U+10A7B",
+      "arabic_name": "ثاء",
+      "latin_translit": "ṯ"
+    },
+    {
+      "index": 28,
+      "type": "letter",
+      "character": "𐩼",
+      "name": "THETH",
+      "codepoint": "U+10A7C",
+      "arabic_name": "ظاء",
+      "latin_translit": "ẓ"
+    },
+    {
+      "index": 29,
+      "type": "numeral",
+      "character": "NUM_1",
+      "name": "NUM_1",
+      "value": 1,
+      "arabic_name": "واحد"
+    },
+    {
+      "index": 30,
+      "type": "numeral",
+      "character": "NUM_2",
+      "name": "NUM_2",
+      "value": 2,
+      "arabic_name": "اثنان"
+    },
+    {
+      "index": 31,
+      "type": "numeral",
+      "character": "NUM_3",
+      "name": "NUM_3",
+      "value": 3,
+      "arabic_name": "ثلاثة"
+    },
+    {
+      "index": 32,
+      "type": "numeral",
+      "character": "NUM_4",
+      "name": "NUM_4",
+      "value": 4,
+      "arabic_name": "أربعة"
+    },
+    {
+      "index": 33,
+      "type": "numeral",
+      "character": "NUM_5",
+      "name": "NUM_5",
+      "value": 5,
+      "arabic_name": "خمسة"
+    },
+    {
+      "index": 34,
+      "type": "numeral",
+      "character": "NUM_6",
+      "name": "NUM_6",
+      "value": 6,
+      "arabic_name": "ستة"
+    },
+    {
+      "index": 35,
+      "type": "numeral",
+      "character": "NUM_10",
+      "name": "NUM_10",
+      "value": 10,
+      "arabic_name": "عشرة"
+    },
+    {
+      "index": 36,
+      "type": "numeral",
+      "character": "NUM_50",
+      "name": "NUM_50",
+      "value": 50,
+      "arabic_name": "خمسون"
+    },
+    {
+      "index": 37,
+      "type": "numeral",
+      "character": "NUM_100",
+      "name": "NUM_100",
+      "value": 100,
+      "arabic_name": "مائة"
+    },
+    {
+      "index": 38,
+      "type": "numeral",
+      "character": "NUM_1000",
+      "name": "NUM_1000",
+      "value": 1000,
+      "arabic_name": "ألف"
+    }
+  ],
+  "version": "0.3.2"
+}

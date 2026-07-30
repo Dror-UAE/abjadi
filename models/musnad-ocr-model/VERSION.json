@@ -1,0 +1,23 @@
+{
+  "package": "musnad-ocr-model",
+  "version": "0.3.2",
+  "synced_at_utc": "2026-07-28T16:34:09.211951+00:00",
+  "source": "C:\\Users\\ahmed\\Documents\\Developments\\Arabic OCR application\\musnad_ocr",
+  "files": {
+    "musnad_final.pth": {
+      "path": "model/musnad_final.pth",
+      "sha256": "60d49001bbb9ab75c254b247814884a8877a5bfb1104c4845795fc710d03fd4c",
+      "bytes": 12467015
+    },
+    "class_prototypes.pt": {
+      "path": "model/class_prototypes.pt",
+      "sha256": "60e150c18784efe36b0b66906184c3a43bb08d14af239e2fe06afdf1cf2222fa",
+      "bytes": 42126
+    },
+    "shape_bank.pt": {
+      "path": "model/shape_bank.pt",
+      "sha256": "67f7ce62261bf401d571de8daf596796691515d27a31b6b49d2b2e7a01490cc5",
+      "bytes": 104614
+    }
+  }
+}

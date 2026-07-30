@@ -1,6 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "models/*"
 
 autoInstallPeers: true
 strictPeerDependencies: false

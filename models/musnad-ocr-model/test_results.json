@@ -1,0 +1,66 @@
+[
+  {
+    "image": "test-1.png",
+    "package": {
+      "char": "𐩭",
+      "name": "KHETH",
+      "conf": 0.872466,
+      "source": "original"
+    },
+    "original": {
+      "char": "𐩭",
+      "name": "KHETH",
+      "conf": 0.872466,
+      "source": "original"
+    },
+    "match": true
+  },
+  {
+    "image": "test-7.png",
+    "package": {
+      "char": "𐩬",
+      "name": "NUN",
+      "conf": 0.975559,
+      "source": "original"
+    },
+    "original": {
+      "char": "𐩬",
+      "name": "NUN",
+      "conf": 0.975559,
+      "source": "original"
+    },
+    "match": true
+  },
+  {
+    "image": "test-15.jpg",
+    "package": {
+      "char": "𐩩",
+      "name": "TAW",
+      "conf": 0.83478,
+      "source": "original"
+    },
+    "original": {
+      "char": "𐩩",
+      "name": "TAW",
+      "conf": 0.83478,
+      "source": "original"
+    },
+    "match": true
+  },
+  {
+    "image": "test-24.png",
+    "package": {
+      "char": "𐩵",
+      "name": "DALETH",
+      "conf": 0.324275,
+      "source": "original@-12deg"
+    },
+    "original": {
+      "char": "𐩵",
+      "name": "DALETH",
+      "conf": 0.324275,
+      "source": "original@-12deg"
+    },
+    "match": true
+  }
+]

@@ -8,6 +8,10 @@ build
 .next
 out
 .turbo
+.expo
+apps/mobile/android/app/build
+apps/mobile/ios/build
+apps/mobile/ios/Pods
 
 # env
 .env
@@ -33,6 +37,16 @@ next-env.d.ts
 # coverage / test
 coverage
 .nyc_output
+
+# python (models)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+models/**/outputs/
 
 # large source videos (use mp4 in public)
 apps/web/public/*.mov

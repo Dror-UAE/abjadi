@@ -1,0 +1,42 @@
+{
+  "domain": "paper",
+  "direction": "rtl",
+  "glyph_order": "rtl_logical",
+  "version": "0.3.2",
+  "word_separator": {
+    "label": "NUM_1",
+    "display": "|",
+    "unicode": "𐩽"
+  },
+  "detection": {
+    "min_area_frac": 0.00015,
+    "max_area_frac": 0.12,
+    "min_side": 8,
+    "crop_pad": 6,
+    "use_projection": true,
+    "upscale_min_width": 1400,
+    "word_gap_from_letter_gaps": true
+  },
+  "classification": {
+    "letters_only": true,
+    "compare_preprocess": false,
+    "use_prototypes": false,
+    "letterbox_retry_only_if_unknown": true
+  },
+  "pipeline": [
+    "detect_glyphs_paper_projection",
+    "detect_word_bars_or_gaps",
+    "cluster_lines_top_to_bottom",
+    "order_line_rtl_logical",
+    "crop_glyph_neighbor_clamped",
+    "classify_each_crop",
+    "paper_beth_gimel_shape_fix",
+    "split_words_by_separator"
+  ],
+  "notes": [
+    "Optimized for dark ink on light paper / digital Musnad font (Segoe Historic).",
+    "Stone inscriptions are out of scope for this detector.",
+    "UI should render result text with dir=rtl; words joined with spaces, not |.",
+    "Classifier fine-tuned on paper-font synthetic dataset."
+  ]
+}

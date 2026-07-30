@@ -1,0 +1,52 @@
+{
+  "image_size": 128,
+  "margin_ratio": 0.12,
+  "letterbox_fill_gray": 180,
+  "supported_suffixes": [".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tif", ".tiff"],
+  "deskew": {
+    "enabled": true,
+    "max_abs_deg": 22.0,
+    "min_apply_deg": 1.5
+  },
+  "inference_branches": [
+    {
+      "key": "original",
+      "description": "Letterbox grayscale crop to 128x128 (photo / clean glyph)"
+    },
+    {
+      "key": "preprocessed",
+      "description": "OpenCV stone enhancement pipeline then normalize_glyph"
+    }
+  ],
+  "stone_preprocess": {
+    "clahe_clip": 2.5,
+    "clahe_tile": 8,
+    "upscale_min_side": 256,
+    "bilateral_d": 9,
+    "bilateral_sigma_color": 60,
+    "bilateral_sigma_space": 60,
+    "median_blur_ksize": 5,
+    "sharpen_sigma": 1.0,
+    "canny_low": 40,
+    "canny_high": 120
+  },
+  "rotation_tta": {
+    "enabled": true,
+    "angles_deg": [-12.0, -6.0, 6.0, 12.0],
+    "trigger_if_confidence_below": 0.45,
+    "min_improvement": 0.03,
+    "disabled_when_letters_only": true
+  },
+  "trust_fusion": {
+    "use_prototypes": true,
+    "use_shape_bank": true,
+    "min_cnn_conf": 0.35,
+    "min_proto_sim": 0.45,
+    "min_margin": 0.02,
+    "lookalike_margin_threshold": 0.18
+  },
+  "device": {
+    "policy": "cpu-first-compatible",
+    "note": "Runs on CPU when CUDA is unavailable. Set force_cpu=true for deterministic CPU-only deployment."
+  }
+}

@@ -4,9 +4,16 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:web": "pnpm --filter @abjadi/web dev",
+    "dev:api": "pnpm --filter @abjadi/api dev",
+    "dev:mobile": "pnpm --filter @abjadi/mobile dev",
+    "setup:model": "pnpm --filter @abjadi/musnad-ocr-model setup:venv",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "clean": "turbo run clean"
+    "clean": "turbo run clean",
+    "db:generate": "pnpm --filter @abjadi/db db:generate",
+    "db:migrate": "pnpm --filter @abjadi/db db:migrate",
+    "db:studio": "pnpm --filter @abjadi/db db:studio"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
