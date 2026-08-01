@@ -132,6 +132,8 @@ export type DocumentationInput = {
   confidence?: number;
   /** Extra images as base64 (optional) */
   extraImages?: Array<{ base64: string; filename?: string; mimeType?: string }>;
+  /** Extra documents (PDF, etc.) as base64 (optional) */
+  extraDocuments?: Array<{ base64: string; filename?: string; mimeType?: string }>;
 };
 
 export type DocumentationResult = {
@@ -139,6 +141,22 @@ export type DocumentationResult = {
   publicId: string;
   status: string;
 };
+
+function extensionForAttachment(mime: string, filename?: string): string {
+  const fromName = filename?.split(".").pop()?.toLowerCase();
+  if (fromName && /^[a-z0-9]{1,8}$/.test(fromName)) return fromName;
+
+  const lower = mime.toLowerCase();
+  if (lower.includes("pdf")) return "pdf";
+  if (lower.includes("png")) return "png";
+  if (lower.includes("webp")) return "webp";
+  if (lower.includes("jpeg") || lower.includes("jpg")) return "jpg";
+  if (lower.includes("msword")) return "doc";
+  if (lower.includes("wordprocessingml")) return "docx";
+  if (lower.includes("ms-excel") || lower.includes("spreadsheetml")) return "xlsx";
+  if (lower.includes("text/plain")) return "txt";
+  return "bin";
+}
 
 export async function persistDocumentation(
   input: DocumentationInput
@@ -204,7 +222,9 @@ export async function persistDocumentation(
   }
 
   let order = 1;
-  for (const extra of input.extraImages ?? []) {
+
+  const extras = [...(input.extraImages ?? []), ...(input.extraDocuments ?? [])];
+  for (const extra of extras) {
     const raw = extra.base64.includes(",")
       ? extra.base64.slice(extra.base64.indexOf(",") + 1)
       : extra.base64;
@@ -212,7 +232,7 @@ export async function persistDocumentation(
     if (!bytes.byteLength) continue;
 
     const mime = extra.mimeType || "image/jpeg";
-    const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : "jpg";
+    const ext = extensionForAttachment(mime, extra.filename);
     const path = `anonymous/${docId}/extra-${String(order).padStart(2, "0")}.${ext}`;
 
     const { error: upErr } = await supabase.storage
@@ -220,7 +240,7 @@ export async function persistDocumentation(
       .upload(path, bytes, { contentType: mime, upsert: false });
 
     if (upErr) {
-      console.error("[supabase] extra image upload failed:", upErr.message);
+      console.error("[supabase] extra attachment upload failed:", upErr.message);
       continue;
     }
 

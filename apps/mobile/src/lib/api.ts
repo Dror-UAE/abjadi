@@ -97,6 +97,41 @@ export async function uriToBase64Image(
   };
 }
 
+/** Read any local file URI as base64 (PDFs / docs — no image compression). */
+export async function uriToBase64File(
+  fileUri: string,
+  opts?: { filename?: string; mimeType?: string }
+): Promise<{ base64: string; filename: string; mimeType: string }> {
+  let response: Response;
+  try {
+    response = await fetch(fileUri);
+  } catch {
+    throw new ApiError('تعذر قراءة الملف من الجهاز');
+  }
+  if (!response.ok) {
+    throw new ApiError('تعذر قراءة الملف من الجهاز');
+  }
+
+  const buffer = await response.arrayBuffer();
+  if (buffer.byteLength === 0) {
+    throw new ApiError('الملف فارغ');
+  }
+  if (buffer.byteLength > 12 * 1024 * 1024) {
+    throw new ApiError('حجم الملف أكبر من المسموح (12 ميجابايت)');
+  }
+
+  const headerType = response.headers.get('content-type')?.split(';')[0]?.trim();
+  const mimeType = opts?.mimeType?.trim() || headerType || 'application/octet-stream';
+  const fromUri = fileUri.split('/').pop()?.split('?')[0];
+  const filename = opts?.filename?.trim() || fromUri || 'document.bin';
+
+  return {
+    base64: arrayBufferToBase64(buffer),
+    filename,
+    mimeType,
+  };
+}
+
 export async function checkApiHealth(signal?: AbortSignal): Promise<boolean> {
   const response = await fetch(`${getApiBaseUrl()}/health`, { signal });
   if (!response.ok) return false;
@@ -276,4 +311,36 @@ export async function fetchScanById(
   }
 
   return data;
+}
+
+export async function deleteScan(
+  scanId: string,
+  signal?: AbortSignal
+): Promise<{ ok: true; id: string }> {
+  const response = await fetch(`${getApiBaseUrl()}/scans/${encodeURIComponent(scanId)}`, {
+    method: 'DELETE',
+    signal,
+  });
+
+  let data: { ok?: boolean; id?: string; error?: string; detail?: string } | null = null;
+  try {
+    data = (await response.json()) as {
+      ok?: boolean;
+      id?: string;
+      error?: string;
+      detail?: string;
+    };
+  } catch {
+    throw new ApiError('تعذر قراءة رد الحذف', response.status);
+  }
+
+  if (!response.ok || !data?.ok || !data.id) {
+    // Already gone on server is fine — local delete can still proceed.
+    if (response.status === 404) {
+      return { ok: true, id: scanId };
+    }
+    throw new ApiError(data?.detail || data?.error || 'فشل حذف التحليل', response.status);
+  }
+
+  return { ok: true, id: data.id };
 }

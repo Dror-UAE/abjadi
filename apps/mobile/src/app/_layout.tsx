@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -8,6 +9,11 @@ import { useAppFonts } from '@/hooks/use-app-fonts';
 import { useTheme } from '@/hooks/use-theme';
 import { loadApiConfig } from '@/lib/api-config';
 import { loadScans } from '@/lib/scan-store';
+import {
+  checkAppVersion,
+  type VersionCheckResult,
+} from '@/lib/version-check';
+import { ForceUpdateScreen } from '@/screens/force-update-screen';
 
 // Keep native launch screen up until fonts + first frame are ready.
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -15,24 +21,78 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 export default function RootLayout() {
   const { colors, flow, isDark } = useTheme();
   const [fontsLoaded, fontError] = useAppFonts();
+  const [bootReady, setBootReady] = useState(false);
+  const [versionResult, setVersionResult] = useState<VersionCheckResult | null>(
+    null
+  );
+  const checkingRef = useRef(false);
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(colors.background);
   }, [colors.background]);
 
-  useEffect(() => {
-    void loadApiConfig();
-    void loadScans();
+  const runVersionCheck = useCallback(async () => {
+    if (checkingRef.current) return;
+    checkingRef.current = true;
+    try {
+      const result = await checkAppVersion();
+      setVersionResult(result);
+    } finally {
+      checkingRef.current = false;
+    }
   }, []);
 
+  // Boot: fonts → API config → version policy → reveal UI.
   useEffect(() => {
-    if (fontsLoaded || fontError) {
-      void SplashScreen.hideAsync();
+    if (!fontsLoaded && !fontError) return;
+
+    let cancelled = false;
+
+    async function boot() {
+      await loadApiConfig();
+      void loadScans();
+      const result = await checkAppVersion();
+      if (cancelled) return;
+      setVersionResult(result);
+      setBootReady(true);
     }
+
+    void boot();
+    return () => {
+      cancelled = true;
+    };
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) {
+  useEffect(() => {
+    if (bootReady) {
+      void SplashScreen.hideAsync();
+    }
+  }, [bootReady]);
+
+  // Re-check whenever the app returns to the foreground (e.g. after Store).
+  useEffect(() => {
+    if (!bootReady) return;
+
+    const onChange = (next: AppStateStatus) => {
+      if (next === 'active') {
+        void runVersionCheck();
+      }
+    };
+
+    const sub = AppState.addEventListener('change', onChange);
+    return () => sub.remove();
+  }, [bootReady, runVersionCheck]);
+
+  if (!bootReady) {
     return null;
+  }
+
+  if (versionResult?.status === 'force-update') {
+    return (
+      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+        <ForceUpdateScreen result={versionResult} />
+      </ThemeProvider>
+    );
   }
 
   return (

@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Image,
   Platform,
   Pressable,
@@ -13,37 +14,27 @@ import {
   View,
   type ImageSourcePropType,
 } from 'react-native';
-import Animated, { FadeIn, FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArabicText } from '@/components/arabic-text';
 import { Fonts, Palette, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { fetchScanById } from '@/lib/api';
-import type { OcrGlyph } from '@/lib/ocr-types';
+import { fetchScanById, deleteScan } from '@/lib/api';
 import type { ScanRecord } from '@/lib/ocr-types';
 import {
+  clearScan,
   getScan,
   getScanByServerId,
   recordFromServerDetail,
   upsertScan,
 } from '@/lib/scan-store';
-import { translateMusnadLines, getArabicLetterForGlyph } from '@/lib/musnad-translate';
+import { translateMusnadLines } from '@/lib/musnad-translate';
 
 const FALLBACK_IMAGE = require('../../assets/images/scanned-image.jpg');
 
-/** Mock detected characters when opened without a live scan (e.g. History). */
-const MOCK_CHARS = [
-  { glyph: '𐩱', nameAr: 'ألف', conf: 97 },
-  { glyph: '𐩡', nameAr: 'لام', conf: 96 },
-  { glyph: '𐩭', nameAr: 'خاء', conf: 94 },
-  { glyph: '𐩸', nameAr: 'زاي', conf: 95 },
-  { glyph: '𐩣', nameAr: 'ميم', conf: 98 },
-  { glyph: '𐩫', nameAr: 'كاف', conf: 96 },
-  { glyph: '𐩡', nameAr: 'لام', conf: 97 },
-] as const;
-
 const MOCK_LINE = '𐩱𐩡 𐩭𐩸𐩣 𐩫𐩡';
+const MOCK_AVG_CONF = 96;
 
 function resolveImageSource(uri?: string | string[]): ImageSourcePropType {
   const value = Array.isArray(uri) ? uri[0] : uri;
@@ -55,17 +46,6 @@ function resolveImageSource(uri?: string | string[]): ImageSourcePropType {
     }
   }
   return FALLBACK_IMAGE;
-}
-
-function displayGlyph(g: OcrGlyph): string {
-  if (g.isSeparator) return g.display || '|';
-  if (g.character?.startsWith('NUM_')) return g.display || g.character.replace('NUM_', '');
-  return g.character || '?';
-}
-
-function glyphNameAr(g: OcrGlyph): string {
-  if (g.isSeparator) return 'فاصل';
-  return g.arabicName || g.name || '—';
 }
 
 export function ResultScreen() {
@@ -145,32 +125,29 @@ export function ResultScreen() {
     return '';
   }, [scan]);
 
-  const detectedChars = useMemo(() => {
-    if (!scan) {
-      return MOCK_CHARS.map((c) => ({
-        glyph: c.glyph,
-        nameAr: c.nameAr,
-        arabicLetter: c.nameAr,
-        conf: c.conf,
-      }));
-    }
-
-    return scan.result.glyphs
-      .filter((g) => !g.isSeparator && g.character && g.character !== '?')
-      .slice(0, 24)
-      .map((g) => ({
-        glyph: displayGlyph(g),
-        nameAr: glyphNameAr(g),
-        arabicLetter: g.arabicLetter || getArabicLetterForGlyph(g) || '—',
-        conf: Math.round(Math.max(0, Math.min(1, g.confidence)) * 100),
-      }));
+  const avgConf = useMemo(() => {
+    if (!scan?.result.glyphs?.length) return MOCK_AVG_CONF;
+    const glyphs = scan.result.glyphs.filter(
+      (g) => !g.isSeparator && g.character && g.character !== '?'
+    );
+    if (!glyphs.length) return MOCK_AVG_CONF;
+    const sum = glyphs.reduce(
+      (acc, g) => acc + Math.max(0, Math.min(1, g.confidence)) * 100,
+      0
+    );
+    return Math.round(sum / glyphs.length);
   }, [scan]);
 
-  const avgConf = useMemo(() => {
-    if (!detectedChars.length) return 0;
-    const sum = detectedChars.reduce((acc, c) => acc + c.conf, 0);
-    return Math.round(sum / detectedChars.length);
-  }, [detectedChars]);
+  /** Own device scan (not remote-only history). */
+  const isMine = Boolean(scan && !scan.id.startsWith('server-'));
+
+  /** Own scan, not already documented, and saved on the server. */
+  const canDocument = useMemo(() => {
+    if (!scan || !isMine) return false;
+    const alreadyDocumented = Boolean(scan.documentationTitle?.trim());
+    const hasServerScan = Boolean(scan.serverScanId || scan.result.scanId);
+    return !alreadyDocumented && hasServerScan;
+  }, [scan, isMine]);
 
   const goHome = () => {
     router.replace('/home');
@@ -182,6 +159,40 @@ export function ResultScreen() {
     } else {
       goHome();
     }
+  };
+
+  const confirmDelete = () => {
+    if (!scan || !isMine) return;
+
+    Alert.alert(
+      'حذف التحليل',
+      'سيتم حذف هذا التحليل من جهازك ومن الخادم. هل تريد المتابعة؟',
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'حذف',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              const serverId = scan.serverScanId || scan.result.scanId;
+              try {
+                if (serverId) {
+                  await deleteScan(serverId);
+                }
+              } catch (err) {
+                const message =
+                  err instanceof Error ? err.message : 'فشل حذف التحليل من الخادم';
+                Alert.alert('تعذر الحذف', message);
+                return;
+              }
+
+              await clearScan(scan.id);
+              goHome();
+            })();
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -298,7 +309,7 @@ export function ResultScreen() {
               tintColor={Palette.ochreClay}
             />
             <ArabicText weight="medium" style={styles.badgeText}>
-              {scan ? `${scan.result.nGlyphs} حرف` : 'تم التعرف'}
+              {avgConf}% ثقة
             </ArabicText>
           </View>
         </Animated.View>
@@ -308,7 +319,7 @@ export function ResultScreen() {
           style={styles.section}
         >
           <ArabicText weight="bold" style={[styles.sectionTitle, { color: flow.text }]}>
-            النص المكتشف
+            النص المستخرج
           </ArabicText>
 
           <View
@@ -325,43 +336,7 @@ export function ResultScreen() {
         </Animated.View>
 
         <Animated.View
-          entering={FadeInDown.delay(200).duration(480)}
-          style={styles.section}
-        >
-          <ArabicText weight="bold" style={[styles.sectionTitle, { color: flow.text }]}>
-            الحروف المكتشفة
-          </ArabicText>
-
-          <View style={styles.charGrid}>
-            {detectedChars.map((char, index) => (
-              <Animated.View
-                key={`${char.glyph}-${index}`}
-                entering={FadeInUp.delay(220 + index * 40).duration(380)}
-                style={[
-                  styles.charCard,
-                  {
-                    backgroundColor: flow.card,
-                    borderColor: flow.cardBorder,
-                  },
-                ]}
-              >
-                <Text style={[styles.charGlyph, { color: flow.text }]}>{char.glyph}</Text>
-                <ArabicText style={[styles.charArabicLetter, { color: Palette.ochreClay }]}>
-                  {char.arabicLetter}
-                </ArabicText>
-                <ArabicText style={[styles.charName, { color: flow.progressLabel }]}>
-                  {char.nameAr}
-                </ArabicText>
-                <ArabicText style={[styles.charConf, { color: flow.textSecondary }]}>
-                  {char.conf}%
-                </ArabicText>
-              </Animated.View>
-            ))}
-          </View>
-        </Animated.View>
-
-        <Animated.View
-          entering={FadeInDown.delay(320).duration(480)}
+          entering={FadeInDown.delay(220).duration(480)}
           style={styles.section}
         >
           <ArabicText weight="bold" style={[styles.sectionTitle, { color: flow.text }]}>
@@ -393,35 +368,43 @@ export function ResultScreen() {
           entering={FadeInDown.delay(400).duration(480)}
           style={styles.actions}
         >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="وثّق النقش"
-            onPress={() => {
-              const imageUri = Array.isArray(uri) ? uri[0] : uri ?? 'mock';
-              router.push({
-                pathname: '/documentation',
-                params: {
-                  uri: imageUri,
-                  confidence: String(avgConf || 96),
-                  scanId: typeof scanId === 'string' ? scanId : Array.isArray(scanId) ? scanId[0] : '',
-                },
-              });
-            }}
-            style={({ pressed }) => [styles.documentBtn, pressed && styles.pressed]}
-          >
-            <SymbolView
-              name={{
-                ios: 'archivebox.fill',
-                android: 'inventory_2',
-                web: 'inventory_2',
+          {canDocument ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="وثّق النقش"
+              onPress={() => {
+                const imageUri = Array.isArray(uri) ? uri[0] : uri ?? 'mock';
+                const localId =
+                  typeof scanId === 'string'
+                    ? scanId
+                    : Array.isArray(scanId)
+                      ? scanId[0]
+                      : scan?.id ?? '';
+                router.push({
+                  pathname: '/documentation',
+                  params: {
+                    uri: imageUri,
+                    confidence: String(avgConf || 96),
+                    scanId: localId,
+                  },
+                });
               }}
-              size={18}
-              tintColor={Palette.duneBeige}
-            />
-            <ArabicText weight="bold" style={styles.documentBtnLabel}>
-              وثّق النقش
-            </ArabicText>
-          </Pressable>
+              style={({ pressed }) => [styles.documentBtn, pressed && styles.pressed]}
+            >
+              <SymbolView
+                name={{
+                  ios: 'archivebox.fill',
+                  android: 'inventory_2',
+                  web: 'inventory_2',
+                }}
+                size={18}
+                tintColor={Palette.duneBeige}
+              />
+              <ArabicText weight="bold" style={styles.documentBtnLabel}>
+                وثّق النقش
+              </ArabicText>
+            </Pressable>
+          ) : null}
 
           <Pressable
             accessibilityRole="button"
@@ -452,6 +435,31 @@ export function ResultScreen() {
               العودة للرئيسية
             </ArabicText>
           </Pressable>
+
+          {isMine ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="حذف التحليل"
+              onPress={confirmDelete}
+              style={({ pressed }) => [
+                styles.deleteBtn,
+                {
+                  borderColor: 'rgba(166, 48, 36, 0.35)',
+                  backgroundColor: 'rgba(166, 48, 36, 0.08)',
+                },
+                pressed && styles.pressed,
+              ]}
+            >
+              <SymbolView
+                name={{ ios: 'trash', android: 'delete', web: 'delete' }}
+                size={16}
+                tintColor="#A63024"
+              />
+              <ArabicText weight="semiBold" style={styles.deleteBtnLabel}>
+                حذف التحليل
+              </ArabicText>
+            </Pressable>
+          ) : null}
         </Animated.View>
       </ScrollView>
     </View>
@@ -578,46 +586,6 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
   },
 
-  charGrid: {
-    flexDirection: 'row-reverse',
-    flexWrap: 'wrap',
-    gap: 6,
-    justifyContent: 'flex-start',
-  },
-
-  charCard: {
-    width: '18%',
-    minWidth: 54,
-    flexGrow: 1,
-    maxWidth: 64,
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    gap: 1,
-  },
-
-  charGlyph: {
-    fontFamily: Fonts.script,
-    fontSize: 20,
-    lineHeight: 26,
-  },
-
-  charArabicLetter: {
-    fontSize: 16,
-    lineHeight: 22,
-  },
-
-  charName: {
-    fontSize: 10,
-  },
-
-  charConf: {
-    fontSize: 9,
-    marginTop: 1,
-  },
-
   meaningCard: {
     borderRadius: 14,
     paddingVertical: Spacing.two,
@@ -689,6 +657,21 @@ const styles = StyleSheet.create({
 
   secondaryBtnLabel: {
     fontSize: 13,
+  },
+
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+
+  deleteBtnLabel: {
+    color: '#A63024',
+    fontSize: 14,
   },
 
   pressed: {

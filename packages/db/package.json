@@ -11,6 +11,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun run ./scripts/migrate.ts && bun run ./scripts/apply-extras.ts",
     "db:studio": "drizzle-kit studio",
+    "version:force-test": "bun run ./scripts/set-mobile-min-versions.ts force",
+    "version:reset-test": "bun run ./scripts/set-mobile-min-versions.ts reset",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

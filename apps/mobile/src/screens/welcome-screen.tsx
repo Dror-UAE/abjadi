@@ -54,7 +54,7 @@ export function WelcomeScreen() {
             </ArabicText>
 
             <ArabicText style={styles.translation}>
-              اكتشف تراث الخطوط والنقوش
+              تعرّف على تراث الخطوط والنقوش
             </ArabicText>
           </View>
 

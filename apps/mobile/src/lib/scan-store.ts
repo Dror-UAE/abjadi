@@ -163,6 +163,7 @@ export async function mergeRemoteDocumentationTitles(
 export function recordFromServerDetail(detail: {
   id: string;
   publicId: string;
+  status?: string;
   documentationTitle?: string;
   sourceImageUrl?: string;
   overlayImageUrl?: string;
@@ -178,6 +179,9 @@ export function recordFromServerDetail(detail: {
 }): ScanRecord {
   const existing = getScanByServerId(detail.id);
   const id = existing?.id ?? `server-${detail.id}`;
+  const remoteTitle = detail.documentationTitle?.trim();
+  const documentedFallback =
+    !remoteTitle && detail.status === 'documented' ? 'موثّق' : undefined;
 
   return {
     id,
@@ -186,7 +190,8 @@ export function recordFromServerDetail(detail: {
     overlayImageUrl: detail.overlayImageUrl,
     serverScanId: detail.id,
     publicId: detail.publicId,
-    documentationTitle: detail.documentationTitle ?? existing?.documentationTitle,
+    documentationTitle:
+      remoteTitle || documentedFallback || existing?.documentationTitle,
     createdAt: existing?.createdAt ?? Date.now(),
     result: {
       ok: true,

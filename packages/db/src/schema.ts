@@ -98,6 +98,25 @@ export const documentationImages = pgTable("documentation_images", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/**
+ * Store-binary compatibility policy for the mobile app (`GET /mobile/config`).
+ * Exactly one row should be `is_active = true` (enforced in extras.sql).
+ */
+export const mobileVersionPolicies = pgTable("mobile_version_policies", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  isActive: boolean("is_active").notNull().default(false),
+  iosMinimumSupportedVersion: text("ios_minimum_supported_version").notNull(),
+  iosLatestVersion: text("ios_latest_version").notNull(),
+  iosStoreUrl: text("ios_store_url").notNull().default(""),
+  androidMinimumSupportedVersion: text("android_minimum_supported_version").notNull(),
+  androidLatestVersion: text("android_latest_version").notNull(),
+  androidStoreUrl: text("android_store_url").notNull().default(""),
+  updateMessageAr: text("update_message_ar").notNull(),
+  updateMessageEn: text("update_message_en").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const scansRelations = relations(scans, ({ one, many }) => ({
   user: one(profiles, { fields: [scans.userId], references: [profiles.id] }),
   ocrResult: one(ocrResults, { fields: [scans.id], references: [ocrResults.scanId] }),

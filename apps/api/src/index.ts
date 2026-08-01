@@ -4,10 +4,11 @@ import { serve } from "@hono/node-server";
 import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 
+import { getMobileConfig } from "./lib/mobile-config.js";
 import { isModelReady } from "./lib/model-paths.js";
 import { createOcrJob, getOcrJob, runOcrAndPersist, warmOcrModel } from "./lib/ocr-jobs.js";
 import { persistDocumentation } from "./lib/persist.js";
-import { getScanById, listScans } from "./lib/scans.js";
+import { getScanById, listScans, deleteScanById } from "./lib/scans.js";
 import { isSupabaseConfigured } from "./lib/supabase.js";
 
 const app = new Hono();
@@ -31,6 +32,16 @@ app.get("/health", (c) => {
     modelReady,
     supabaseConfigured: isSupabaseConfigured(),
   });
+});
+
+/** Remote policy for store binary compatibility (force update). Separate from OTA. */
+app.get("/mobile/config", async (c) => {
+  const config = await getMobileConfig();
+  if (!config) {
+    // Mobile treats non-OK as fail-open (`unknown`).
+    return c.json({ error: "mobile_config_unavailable" }, 503);
+  }
+  return c.json(config);
 });
 
 type JsonOcrBody = {
@@ -251,6 +262,41 @@ app.get("/scans/:id", async (c) => {
   }
 });
 
+app.delete("/scans/:id", async (c) => {
+  if (!isSupabaseConfigured()) {
+    return c.json(
+      {
+        ok: false,
+        error: "supabase_not_configured",
+        detail: "Set SUPABASE_URL and SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY) on the API.",
+      },
+      503
+    );
+  }
+
+  const id = c.req.param("id")?.trim();
+  if (!id) {
+    return c.json({ ok: false, error: "missing_scan_id" }, 400);
+  }
+
+  try {
+    const result = await deleteScanById(id);
+    if (!result.ok && result.error === "not_found") {
+      return c.json({ ok: false, error: "scan_not_found" }, 404);
+    }
+    if (!result.ok) {
+      return c.json(
+        { ok: false, error: "delete_scan_failed", detail: result.detail },
+        500
+      );
+    }
+    return c.json({ ok: true, id: result.id });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return c.json({ ok: false, error: "delete_scan_failed", detail: message }, 500);
+  }
+});
+
 type DocumentationBody = {
   scanId?: string;
   title?: string;
@@ -265,6 +311,7 @@ type DocumentationBody = {
   notes?: string;
   confidence?: number;
   extraImages?: Array<{ base64: string; filename?: string; mimeType?: string }>;
+  extraDocuments?: Array<{ base64: string; filename?: string; mimeType?: string }>;
 };
 
 app.post("/documentations", async (c) => {
@@ -299,6 +346,7 @@ app.post("/documentations", async (c) => {
       notes: body.notes,
       confidence: body.confidence,
       extraImages: body.extraImages,
+      extraDocuments: body.extraDocuments,
     });
 
     return c.json({ ok: true, ...saved });

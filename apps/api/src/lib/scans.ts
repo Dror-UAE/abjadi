@@ -220,3 +220,97 @@ export async function getScanById(scanId: string): Promise<ScanDetail | null> {
     },
   };
 }
+
+export type DeleteScanResult =
+  | { ok: true; id: string }
+  | { ok: false; error: "not_found" | "delete_failed"; detail?: string };
+
+/**
+ * Delete a scan row (cascades OCR + documentation rows) and best-effort
+ * remove related storage objects.
+ */
+export async function deleteScanById(scanId: string): Promise<DeleteScanResult> {
+  if (!isSupabaseConfigured()) {
+    throw new Error("Supabase is not configured");
+  }
+
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Supabase is not configured");
+
+  const { data: scan, error: lookupErr } = await supabase
+    .from("scans")
+    .select(
+      `
+      id,
+      source_image_path,
+      overlay_image_path,
+      documentations (
+        id,
+        documentation_images (
+          storage_path
+        )
+      )
+    `
+    )
+    .eq("id", scanId)
+    .maybeSingle();
+
+  if (lookupErr) {
+    return { ok: false, error: "delete_failed", detail: lookupErr.message };
+  }
+  if (!scan) {
+    return { ok: false, error: "not_found" };
+  }
+
+  const scanPaths = [scan.source_image_path, scan.overlay_image_path].filter(
+    (p): p is string => Boolean(p)
+  );
+
+  type DocImage = { storage_path?: string | null };
+  type DocNode = {
+    id?: string;
+    documentation_images?: DocImage | DocImage[] | null;
+  };
+
+  const docsRaw = (scan as { documentations?: DocNode | DocNode[] | null }).documentations;
+  const docs = docsRaw ? (Array.isArray(docsRaw) ? docsRaw : [docsRaw]) : [];
+  const docPaths: string[] = [];
+  for (const doc of docs) {
+    const images = doc.documentation_images
+      ? Array.isArray(doc.documentation_images)
+        ? doc.documentation_images
+        : [doc.documentation_images]
+      : [];
+    for (const img of images) {
+      if (img.storage_path) docPaths.push(img.storage_path);
+    }
+  }
+
+  if (scanPaths.length) {
+    const { error: scanStorageErr } = await supabase.storage
+      .from("scan-images")
+      .remove(scanPaths);
+    if (scanStorageErr) {
+      console.error("[scans] storage cleanup (scan-images) failed:", scanStorageErr.message);
+    }
+  }
+
+  if (docPaths.length) {
+    const { error: docStorageErr } = await supabase.storage
+      .from("documentation-images")
+      .remove(docPaths);
+    if (docStorageErr) {
+      console.error(
+        "[scans] storage cleanup (documentation-images) failed:",
+        docStorageErr.message
+      );
+    }
+  }
+
+  const { error: deleteErr } = await supabase.from("scans").delete().eq("id", scanId);
+  if (deleteErr) {
+    return { ok: false, error: "delete_failed", detail: deleteErr.message };
+  }
+
+  return { ok: true, id: scanId };
+}

@@ -1,3 +1,4 @@
+import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -22,12 +23,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArabicText } from '@/components/arabic-text';
 import { Fonts, Palette, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { ApiError, submitDocumentation, uriToBase64Image } from '@/lib/api';
+import { ApiError, submitDocumentation, uriToBase64File, uriToBase64Image } from '@/lib/api';
 import { getScan, setScanDocumentationTitle } from '@/lib/scan-store';
 import { translateMusnadLines } from '@/lib/musnad-translate';
 
 const FALLBACK_IMAGE = require('../../assets/images/scanned-image.jpg');
 const DEFAULT_OCR = '𐩱𐩡 𐩭𐩸𐩣 𐩫𐩡';
+const MAX_DOCUMENTS = 8;
+
+type AttachedDocument = {
+  uri: string;
+  name: string;
+  mimeType: string;
+  size?: number;
+};
 
 function resolveImageSource(uri?: string | string[]): ImageSourcePropType {
   const value = Array.isArray(uri) ? uri[0] : uri;
@@ -164,6 +173,7 @@ export function DocumentationScreen() {
   );
   const [notes, setNotes] = useState('');
   const [extraImages, setExtraImages] = useState<string[]>([]);
+  const [documents, setDocuments] = useState<AttachedDocument[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   const close = () => {
@@ -180,6 +190,70 @@ export function DocumentationScreen() {
     if (!result.canceled) {
       setExtraImages((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
     }
+  };
+
+  const addDocuments = async () => {
+    if (documents.length >= MAX_DOCUMENTS) {
+      Alert.alert('حد الملفات', `يمكنك إرفاق حتى ${MAX_DOCUMENTS} ملفات.`);
+      return;
+    }
+
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        // iOS accepts a single MIME or '*/*'; Android can take an array.
+        type:
+          Platform.OS === 'ios'
+            ? '*/*'
+            : [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'text/plain',
+              ],
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled) return;
+
+      const allowed = (mime: string | undefined, name: string) => {
+        const m = (mime || '').toLowerCase();
+        const n = name.toLowerCase();
+        return (
+          m.includes('pdf') ||
+          m.includes('msword') ||
+          m.includes('wordprocessingml') ||
+          m.includes('text/plain') ||
+          n.endsWith('.pdf') ||
+          n.endsWith('.doc') ||
+          n.endsWith('.docx') ||
+          n.endsWith('.txt')
+        );
+      };
+
+      const next = result.assets
+        .filter((asset) => Boolean(asset.uri))
+        .filter((asset) => allowed(asset.mimeType ?? undefined, asset.name || ''))
+        .map((asset) => ({
+          uri: asset.uri,
+          name: asset.name || asset.uri.split('/').pop() || 'document',
+          mimeType: asset.mimeType || 'application/octet-stream',
+          size: asset.size ?? undefined,
+        }));
+
+      if (next.length === 0) {
+        Alert.alert('نوع غير مدعوم', 'يرجى اختيار ملف PDF أو Word أو نص.');
+        return;
+      }
+
+      setDocuments((prev) => [...prev, ...next].slice(0, MAX_DOCUMENTS));
+    } catch {
+      Alert.alert('تعذر الاختيار', 'لم نتمكن من فتح منتقي الملفات.');
+    }
+  };
+
+  const removeDocument = (uri: string) => {
+    setDocuments((prev) => prev.filter((doc) => doc.uri !== uri));
   };
 
   const submit = async () => {
@@ -205,6 +279,20 @@ export function DocumentationScreen() {
         })
       );
 
+      const docs = await Promise.all(
+        documents.map(async (doc) => {
+          const part = await uriToBase64File(doc.uri, {
+            filename: doc.name,
+            mimeType: doc.mimeType,
+          });
+          return {
+            base64: part.base64,
+            filename: part.filename,
+            mimeType: part.mimeType,
+          };
+        })
+      );
+
       const saved = await submitDocumentation({
         scanId: serverScanId,
         title: title.trim() || 'نقش بدون عنوان',
@@ -219,6 +307,7 @@ export function DocumentationScreen() {
         notes,
         confidence,
         extraImages: extras,
+        extraDocuments: docs,
       });
 
       if (!saved.ok) {
@@ -379,6 +468,97 @@ export function DocumentationScreen() {
           </SectionCard>
 
           <SectionCard
+            title="ملفات مرفقة"
+            icon={{ ios: 'doc.badge.plus', android: 'attach_file' }}
+          >
+            <ArabicText style={[styles.docsHint, { color: colors.textSecondary }]}>
+              أرفق PDF أو مستندات داعمة للتوثيق (حتى {MAX_DOCUMENTS} ملفات).
+            </ArabicText>
+
+            <Pressable
+              onPress={() => void addDocuments()}
+              style={({ pressed }) => [
+                styles.attachBtn,
+                {
+                  backgroundColor: colors.background,
+                  borderColor: colors.border,
+                },
+                pressed && styles.pressed,
+              ]}
+            >
+              <SymbolView
+                name={{
+                  ios: 'doc.badge.plus',
+                  android: 'upload_file',
+                  web: 'upload_file',
+                }}
+                size={18}
+                tintColor={Palette.ochreClay}
+              />
+              <ArabicText weight="medium" style={[styles.attachLabel, { color: colors.text }]}>
+                اختيار ملف
+              </ArabicText>
+            </Pressable>
+
+            {documents.length > 0 ? (
+              <View style={styles.docsList}>
+                {documents.map((doc) => (
+                  <View
+                    key={doc.uri}
+                    style={[
+                      styles.docRow,
+                      {
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
+                    <Pressable
+                      hitSlop={8}
+                      onPress={() => removeDocument(doc.uri)}
+                      accessibilityLabel="إزالة الملف"
+                    >
+                      <SymbolView
+                        name={{ ios: 'xmark.circle.fill', android: 'cancel', web: 'cancel' }}
+                        size={18}
+                        tintColor={colors.textSecondary}
+                      />
+                    </Pressable>
+
+                    <View style={styles.docMeta}>
+                      <ArabicText
+                        weight="medium"
+                        style={[styles.docName, { color: colors.text }]}
+                        numberOfLines={1}
+                      >
+                        {doc.name}
+                      </ArabicText>
+                      <ArabicText style={[styles.docType, { color: colors.textSecondary }]}>
+                        {doc.mimeType.includes('pdf')
+                          ? 'PDF'
+                          : doc.mimeType.includes('word')
+                            ? 'Word'
+                            : doc.mimeType.includes('text')
+                              ? 'نص'
+                              : 'ملف'}
+                        {doc.size ? ` · ${(doc.size / 1024).toFixed(0)} ك.ب` : ''}
+                      </ArabicText>
+                    </View>
+
+                    <View style={styles.docIcon}>
+                      <SymbolView
+                        name={{ ios: 'doc.fill', android: 'description', web: 'description' }}
+                        size={16}
+                        tintColor={Palette.ochreClay}
+                      />
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </SectionCard>
+
+          <SectionCard
             title="قراءة التعرف"
             icon={{ ios: 'text.magnifyingglass', android: 'document_scanner' }}
           >
@@ -413,7 +593,7 @@ export function DocumentationScreen() {
             <TextField
               value={ocrText}
               onChangeText={setOcrText}
-              placeholder="حرّر النص المكتشف"
+              placeholder="حرّر النص المستخرج"
               multiline
               style={{ fontFamily: Fonts.script, fontSize: 22, letterSpacing: 3 }}
             />
@@ -569,6 +749,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 2,
+  },
+
+  docsHint: {
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'right',
+    marginBottom: Spacing.two,
+  },
+
+  attachBtn: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+
+  attachLabel: {
+    fontSize: 14,
+  },
+
+  docsList: {
+    marginTop: Spacing.two,
+    gap: Spacing.two,
+  },
+
+  docRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: Spacing.two,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+
+  docIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(193, 138, 59, 0.12)',
+  },
+
+  docMeta: {
+    flex: 1,
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+
+  docName: {
+    fontSize: 13,
+    textAlign: 'right',
+    writingDirection: 'ltr',
+  },
+
+  docType: {
+    fontSize: 11,
+    textAlign: 'right',
   },
 
   confidenceRow: {

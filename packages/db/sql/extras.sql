@@ -11,6 +11,11 @@ create index if not exists documentations_submitted_at_idx on public.documentati
 create index if not exists documentation_images_doc_id_idx
   on public.documentation_images (documentation_id);
 
+-- Exactly one active mobile version policy
+create unique index if not exists mobile_version_policies_one_active_idx
+  on public.mobile_version_policies (is_active)
+  where is_active = true;
+
 -- profiles → auth.users
 do $$
 begin
@@ -44,6 +49,37 @@ create trigger documentations_set_updated_at
   before update on public.documentations
   for each row execute function public.set_updated_at();
 
+drop trigger if exists mobile_version_policies_set_updated_at on public.mobile_version_policies;
+create trigger mobile_version_policies_set_updated_at
+  before update on public.mobile_version_policies
+  for each row execute function public.set_updated_at();
+
+-- Default / seed: one active mobile version policy (1.0.0)
+insert into public.mobile_version_policies (
+  is_active,
+  ios_minimum_supported_version,
+  ios_latest_version,
+  ios_store_url,
+  android_minimum_supported_version,
+  android_latest_version,
+  android_store_url,
+  update_message_ar,
+  update_message_en
+)
+select
+  true,
+  '1.0.0',
+  '1.0.0',
+  '',
+  '1.0.0',
+  '1.0.0',
+  '',
+  'يتوفر إصدار جديد من أبجدي. يرجى تحديث التطبيق للمتابعة.',
+  'A new version of Abjadi is available. Please update to continue.'
+where not exists (
+  select 1 from public.mobile_version_policies where is_active = true
+);
+
 -- storage buckets
 insert into storage.buckets (id, name, public)
 values
@@ -57,6 +93,8 @@ alter table public.scans enable row level security;
 alter table public.ocr_results enable row level security;
 alter table public.documentations enable row level security;
 alter table public.documentation_images enable row level security;
+-- Service-role only (API). No anon/authenticated policies.
+alter table public.mobile_version_policies enable row level security;
 
 drop policy if exists "profiles_select_own" on public.profiles;
 create policy "profiles_select_own" on public.profiles

@@ -13,7 +13,9 @@
     "clean": "turbo run clean",
     "db:generate": "pnpm --filter @abjadi/db db:generate",
     "db:migrate": "pnpm --filter @abjadi/db db:migrate",
-    "db:studio": "pnpm --filter @abjadi/db db:studio"
+    "db:studio": "pnpm --filter @abjadi/db db:studio",
+    "version:force-test": "pnpm --filter @abjadi/db version:force-test",
+    "version:reset-test": "pnpm --filter @abjadi/db version:reset-test"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",

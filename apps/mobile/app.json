@@ -66,6 +66,7 @@
           "photosPermission": "Allow Abjadi to access your photos so you can choose an image to analyze."
         }
       ],
+      "expo-document-picker",
       "expo-asset"
     ],
     "experiments": {

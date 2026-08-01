@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 
 import type { ScanRecord, ScanSummary } from './ocr-types';
 
-const DEFAULT_SCAN_TITLE = 'نص مكتشف';
+const DEFAULT_SCAN_TITLE = 'نص محلَّل';
 const TITLE_MAX_LEN = 56;
 
 export function scanDisplayTitle(text: string | undefined | null): string {

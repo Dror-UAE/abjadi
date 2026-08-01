@@ -71,6 +71,7 @@ export type DocumentationPayload = {
   notes: string;
   confidence: number;
   extraImages?: Array<{ base64: string; filename?: string; mimeType?: string }>;
+  extraDocuments?: Array<{ base64: string; filename?: string; mimeType?: string }>;
 };
 
 export type DocumentationResponse =

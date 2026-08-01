@@ -1,3 +1,6 @@
+import * as ImagePicker from 'expo-image-picker';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -7,8 +10,9 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import Animated, {
+  FadeInDown,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ArabicText } from '@/components/arabic-text';
@@ -16,29 +20,21 @@ import { CaptureHero } from '@/components/capture-hero';
 import { BottomTabInset, Palette, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { fetchScanHistory } from '@/lib/api';
-import { buildHistoryItems, openHistoryItem, syncStatusLabel, type HistoryListItem } from '@/lib/history';
+import {
+  buildHistoryItems,
+  openHistoryItem,
+  syncStatusLabel,
+  type HistoryListItem,
+} from '@/lib/history';
 import type { ScanSummary } from '@/lib/ocr-types';
 import { listScans, loadScans, mergeRemoteDocumentationTitles } from '@/lib/scan-store';
 
 const RECENT_LIMIT = 5;
 
-type RecordItem = HistoryListItem & {
-  location: string;
-  status: 'synced' | 'pending';
-};
-
-function toRecordItem(item: HistoryListItem): RecordItem {
-  return {
-    ...item,
-    location: syncStatusLabel(item),
-    status: item.serverScanId ? 'synced' : 'pending',
-  };
-}
-
 export function HomeScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [records, setRecords] = useState<RecordItem[]>([]);
+  const [records, setRecords] = useState<HistoryListItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   const reload = useCallback(async () => {
@@ -57,7 +53,7 @@ export function HomeScreen() {
         // Show local scans when API is unreachable.
       }
 
-      setRecords(buildHistoryItems(listScans(), remote).slice(0, RECENT_LIMIT).map(toRecordItem));
+      setRecords(buildHistoryItems(listScans(), remote).slice(0, RECENT_LIMIT));
     } finally {
       setLoading(false);
     }
@@ -69,7 +65,28 @@ export function HomeScreen() {
     }, [reload])
   );
 
+  const openLibrary = useCallback(async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+      allowsEditing: false,
+    });
+
+    if (!result.canceled && result.assets[0]?.uri) {
+      router.push({
+        pathname: '/analyzing',
+        params: { uri: encodeURIComponent(result.assets[0].uri) },
+      });
+    }
+  }, []);
+
   const hasRecords = records.length > 0;
+  const archiveCountLabel =
+    records.length === 1
+      ? 'فحص واحد محفوظ'
+      : records.length === 2
+        ? 'فحصان محفوظان'
+        : `${records.length} فحوصات محفوظة`;
 
   return (
     <View
@@ -86,7 +103,10 @@ export function HomeScreen() {
       ]}
     >
       <View style={styles.content}>
-        <CaptureHero onPress={() => router.push('/capture')} />
+        <CaptureHero
+          onCapture={() => router.push('/capture')}
+          onLibrary={() => void openLibrary()}
+        />
 
         {loading ? (
           <View style={styles.loading}>
@@ -95,12 +115,19 @@ export function HomeScreen() {
         ) : hasRecords ? (
           <View style={styles.recordsContainer}>
             <View style={styles.sectionHeader}>
-              <ArabicText
-                weight="bold"
-                style={[styles.sectionTitle, { color: colors.text }]}
-              >
-                آخر الاكتشافات
-              </ArabicText>
+              <View style={styles.sectionTitles}>
+                <ArabicText
+                  weight="bold"
+                  style={[styles.sectionTitle, { color: colors.text }]}
+                >
+                  آخر الفحوصات
+                </ArabicText>
+                <ArabicText
+                  style={[styles.sectionMeta, { color: colors.textSecondary }]}
+                >
+                  {archiveCountLabel}
+                </ArabicText>
+              </View>
 
               <Pressable hitSlop={8} onPress={() => router.push('/history')}>
                 <ArabicText weight="medium" style={styles.viewAll}>
@@ -114,9 +141,10 @@ export function HomeScreen() {
               keyExtractor={(item) => item.key}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={styles.list}
-              renderItem={({ item }) => (
+              renderItem={({ item, index }) => (
                 <RecordCard
                   item={item}
+                  index={index}
                   colors={colors}
                   onPress={() => openHistoryItem(item)}
                 />
@@ -124,59 +152,25 @@ export function HomeScreen() {
             />
           </View>
         ) : (
-          <EmptyState />
+          <EmptyState colors={colors} />
         )}
       </View>
     </View>
   );
 }
 
-function EmptyState() {
+function EmptyState({
+  colors,
+}: {
+  colors: { text: string; textSecondary: string };
+}) {
   return (
     <View style={styles.emptyContainer}>
-      <ArabicText weight="bold" style={styles.emptyTitle}>
-        كيف تستخدم أبجدي؟
+      <ArabicText weight="bold" style={[styles.emptyTitle, { color: colors.text }]}>
+        أرشيفك بانتظار أول نقش
       </ArabicText>
-
-      <Step text="وجّه الكاميرا نحو النص أو الكتابة التي تريد اكتشافها." />
-      <Step text="تأكد من وضوح الصورة ووجود إضاءة مناسبة." />
-      <Step text="اجعل الكتابة كاملة داخل إطار الصورة." />
-      <Step text="سيقوم التطبيق بتحليل الحروف والتعرف عليها." />
-
-      <View style={styles.divider} />
-
-      <ArabicText weight="bold" style={styles.emptyTitle}>
-        ماذا يقدم لك أبجدي؟
-      </ArabicText>
-
-      <ArabicText style={styles.infoText}>
-        • التعرف على الحروف والكتابات القديمة.
-      </ArabicText>
-
-      <ArabicText style={styles.infoText}>
-        • تحويل الصور إلى نصوص قابلة للقراءة.
-      </ArabicText>
-
-      <ArabicText style={styles.infoText}>
-        • تحليل الخطوط والرموز المكتوبة.
-      </ArabicText>
-
-      <ArabicText style={styles.footerText}>
-        ابدأ الآن باكتشاف أي كتابة ✨
-      </ArabicText>
-    </View>
-  );
-}
-
-function Step({ text }: { text: string }) {
-  return (
-    <View style={styles.step}>
-      <View style={styles.number}>
-        <ArabicText>✓</ArabicText>
-      </View>
-
-      <ArabicText style={styles.infoText}>
-        {text}
+      <ArabicText style={[styles.emptyCopy, { color: colors.textSecondary }]}>
+        صوّر كتابة أو اختر صورة من مكتبتك لتظهر نتائج التحليل هنا.
       </ArabicText>
     </View>
   );
@@ -184,54 +178,70 @@ function Step({ text }: { text: string }) {
 
 function RecordCard({
   item,
+  index,
   colors,
   onPress,
 }: {
-  item: RecordItem;
+  item: HistoryListItem;
+  index: number;
   colors: { text: string; textSecondary: string; backgroundElement: string };
   onPress: () => void;
 }) {
+  const status = syncStatusLabel(item);
+  const preview =
+    item.preview && item.preview !== '—' ? item.preview.trim() : null;
+
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.recordCard,
-        {
-          backgroundColor: colors.backgroundElement,
-        },
-        pressed && styles.pressed,
-      ]}
-    >
-      <View style={styles.recordThumb}>
-        {item.imageUri ? (
-          <Image source={{ uri: item.imageUri }} style={styles.recordThumbImage} resizeMode="cover" />
-        ) : (
-          <View style={[styles.recordThumbImage, styles.thumbPlaceholder]} />
-        )}
-      </View>
+    <Animated.View entering={FadeInDown.delay(index * 70).duration(420)}>
+      <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.recordCard,
+          { backgroundColor: colors.backgroundElement },
+          pressed && styles.pressed,
+        ]}
+      >
+        <View style={styles.recordThumb}>
+          {item.imageUri ? (
+            <Image
+              source={{ uri: item.imageUri }}
+              style={styles.recordThumbImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.recordThumbImage, styles.thumbPlaceholder]} />
+          )}
+          <View style={styles.thumbScrim} />
+          {preview ? (
+            <ArabicText numberOfLines={1} style={styles.thumbGlyph}>
+              {preview}
+            </ArabicText>
+          ) : null}
+        </View>
 
-      <View style={styles.recordBody}>
-        <ArabicText
-          weight="semiBold"
-          style={[styles.recordTitle, { color: colors.text }]}
-        >
-          {item.title}
-        </ArabicText>
+        <View style={styles.recordBody}>
+          <ArabicText
+            weight="semiBold"
+            style={[styles.recordTitle, { color: colors.text }]}
+            numberOfLines={1}
+          >
+            {item.title}
+          </ArabicText>
 
-        <ArabicText
-          style={[styles.recordMeta, { color: colors.textSecondary }]}
-        >
-          {item.time}
-        </ArabicText>
+          <ArabicText
+            style={[styles.recordMeta, { color: colors.textSecondary }]}
+          >
+            {item.time}
+          </ArabicText>
 
-        <ArabicText
-          style={[styles.recordMeta, { color: colors.textSecondary }]}
-          numberOfLines={1}
-        >
-          {item.location}
-        </ArabicText>
-      </View>
-    </Pressable>
+          <View style={styles.statusChip}>
+            <ArabicText weight="medium" style={styles.statusChipText}>
+              {status}
+            </ArabicText>
+          </View>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -243,7 +253,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: Spacing.three,
-    gap: Spacing.three,
+    gap: Spacing.four,
   },
 
   loading: {
@@ -255,52 +265,19 @@ const styles = StyleSheet.create({
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
-    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    gap: Spacing.two,
   },
 
   emptyTitle: {
-    color: Palette.deepSandBrown,
-    fontSize: 19,
-    marginBottom: 14,
+    fontSize: 20,
     textAlign: 'right',
   },
 
-  step: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 10,
-  },
-
-  number: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(214, 182, 147, 0.45)',
-  },
-
-  infoText: {
-    flex: 1,
-    textAlign: 'right',
-    color: Palette.deepSandBrown,
+  emptyCopy: {
     fontSize: 15,
-    lineHeight: 25,
-  },
-
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: Palette.sandstone,
-    opacity: 0.55,
-    marginVertical: 18,
-  },
-
-  footerText: {
-    marginTop: 18,
-    textAlign: 'center',
-    color: Palette.deepSandBrown,
-    opacity: 0.7,
+    lineHeight: 24,
+    textAlign: 'right',
   },
 
   recordsContainer: {
@@ -310,42 +287,55 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: 'row-reverse',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: Spacing.three,
+  },
+
+  sectionTitles: {
+    alignItems: 'flex-end',
+    gap: 2,
   },
 
   sectionTitle: {
     fontSize: 18,
   },
 
+  sectionMeta: {
+    fontSize: 12,
+  },
+
   viewAll: {
     color: Palette.desertSage,
+    marginTop: 2,
   },
 
   list: {
     gap: Spacing.two,
+    paddingBottom: Spacing.two,
   },
 
   recordCard: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Palette.sandstone,
     flexDirection: 'row-reverse',
-    alignItems: 'center',
+    alignItems: 'stretch',
     padding: Spacing.two,
-    borderRadius: 18,
-    gap: Spacing.two,
+    borderRadius: 20,
+    gap: Spacing.three,
+    minHeight: 104,
   },
 
   recordThumb: {
-    width: 64,
-    height: 64,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 92,
+    height: 92,
+    borderRadius: 16,
     backgroundColor: Palette.sandstone,
     overflow: 'hidden',
+    justifyContent: 'flex-end',
   },
 
   recordThumbImage: {
+    ...StyleSheet.absoluteFill,
     width: '100%',
     height: '100%',
   },
@@ -354,22 +344,59 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.sandstone,
   },
 
+  thumbScrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(40, 24, 12, 0.22)',
+  },
+
+  thumbGlyph: {
+    position: 'relative',
+    zIndex: 1,
+    color: Palette.duneBeige,
+    fontSize: 11,
+    lineHeight: 16,
+    textAlign: 'center',
+    paddingHorizontal: 6,
+    paddingBottom: 8,
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+
   recordBody: {
     flex: 1,
     alignItems: 'flex-end',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 2,
   },
 
   recordTitle: {
-    fontSize: 15,
+    fontSize: 16,
+    textAlign: 'right',
   },
 
   recordMeta: {
     fontSize: 12,
-    marginTop: 3,
     textAlign: 'right',
   },
 
+  statusChip: {
+    marginTop: 4,
+    alignSelf: 'flex-end',
+    backgroundColor: 'rgba(193, 138, 59, 0.14)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+
+  statusChipText: {
+    color: Palette.ochreClay,
+    fontSize: 11,
+  },
+
   pressed: {
-    opacity: 0.88,
+    opacity: 0.9,
+    transform: [{ scale: 0.99 }],
   },
 });

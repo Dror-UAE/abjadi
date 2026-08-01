@@ -35,6 +35,8 @@ PODS:
     - ExpoModulesCore
   - ExpoDevice (57.0.1):
     - ExpoModulesCore
+  - ExpoDocumentPicker (57.0.1):
+    - ExpoModulesCore
   - ExpoDomWebView (57.0.1):
     - ExpoModulesCore
   - ExpoFileSystem (57.0.1):
@@ -2292,6 +2294,7 @@ DEPENDENCIES:
   - "ExpoBlur (from `../../../node_modules/.pnpm/expo-blur@57.0.2_expo@57.0.8_react-native@0.86.0_@babel+core@7.29.7_supports-color@8.1._93c9a866ae8e7188af286a63a15f3539/node_modules/expo-blur/ios`)"
   - "ExpoCamera (from `../../../node_modules/.pnpm/expo-camera@57.0.3_@types+emscripten@1.41.5_expo@57.0.8_react-native-web@0.21.2_react-d_1204ebfbd2f3ae22758e1c1c115a40fc/node_modules/expo-camera/ios/ExpoCamera.podspec`)"
   - "ExpoDevice (from `../../../node_modules/.pnpm/expo-device@57.0.1_expo@57.0.8/node_modules/expo-device/ios`)"
+  - "ExpoDocumentPicker (from `../../../node_modules/.pnpm/expo-document-picker@57.0.1_expo@57.0.8/node_modules/expo-document-picker/ios`)"
   - "ExpoDomWebView (from `../../../node_modules/.pnpm/@expo+dom-webview@57.0.1_expo@57.0.8_react-native@0.86.0_@babel+core@7.29.7_supports-co_2a26cd1053df051f673be52eed575467/node_modules/@expo/dom-webview/ios`)"
   - "ExpoFileSystem (from `../../../node_modules/.pnpm/expo-file-system@57.0.1_expo@57.0.8_react-native@0.86.0_@babel+core@7.29.7_supports-col_93f82b8f6d3794de353bc5f2e6b2bb6c/node_modules/expo-file-system/ios/ExpoFileSystem.podspec`)"
   - "ExpoFont (from `../../../node_modules/.pnpm/expo-font@57.0.1_expo@57.0.8_react-native@0.86.0_@babel+core@7.29.7_supports-color@8.1._49d6184b7cf352bb1ded8cdf0497e6b0/node_modules/expo-font/ios/ExpoFont.podspec`)"
@@ -2410,6 +2413,8 @@ EXTERNAL SOURCES:
     :podspec: "../../../node_modules/.pnpm/expo-camera@57.0.3_@types+emscripten@1.41.5_expo@57.0.8_react-native-web@0.21.2_react-d_1204ebfbd2f3ae22758e1c1c115a40fc/node_modules/expo-camera/ios/ExpoCamera.podspec"
   ExpoDevice:
     :path: "../../../node_modules/.pnpm/expo-device@57.0.1_expo@57.0.8/node_modules/expo-device/ios"
+  ExpoDocumentPicker:
+    :path: "../../../node_modules/.pnpm/expo-document-picker@57.0.1_expo@57.0.8/node_modules/expo-document-picker/ios"
   ExpoDomWebView:
     :path: "../../../node_modules/.pnpm/@expo+dom-webview@57.0.1_expo@57.0.8_react-native@0.86.0_@babel+core@7.29.7_supports-co_2a26cd1053df051f673be52eed575467/node_modules/@expo/dom-webview/ios"
   ExpoFileSystem:
@@ -2625,6 +2630,7 @@ SPEC CHECKSUMS:
   ExpoBlur: 69e67b4fbfed6f7325377af2aefa8aa4f00cd2af
   ExpoCamera: a5e9d9ce2fc06689eb2dd676f1f8d5f22f8aa292
   ExpoDevice: 93a72d7c2bd656a4f0c0d580523e390e9ee7fba5
+  ExpoDocumentPicker: 6fb67a6f39ba9beb53a4b4a3f2949e0b5e9bc3bf
   ExpoDomWebView: beaec034e51bd028428b98bb1f2633ab79c6d095
   ExpoFileSystem: e441dae0ae671fc451640517550973d9e024fdf0
   ExpoFont: 59e1faf66ba9bcd232ae1e2ce58d202a48b6f65e
