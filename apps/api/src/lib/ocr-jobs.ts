@@ -65,8 +65,9 @@ async function saveJob(job: OcrJobRecord): Promise<void> {
     });
 
   if (error) {
+    // Log but don't throw — Supabase storage is a best-effort backup.
+    // The in-memory record is the authoritative source while the server runs.
     console.error(`[ocr-job] failed to persist ${job.id}:`, error.message);
-    throw new Error(`Could not persist OCR job: ${error.message}`);
   }
 }
 
@@ -161,10 +162,18 @@ export async function createOcrJob(
 
 export async function getOcrJob(id: string): Promise<OcrJobRecord | undefined> {
   pruneJobs();
-  const local = jobs.get(id);
 
+  // Always prefer the in-memory record — it is the authoritative source while
+  // the server is running. Supabase storage writes are async and may lag behind
+  // the in-memory state, causing polls to see a stale "running" status even
+  // after the job has already succeeded.
+  const local = jobs.get(id);
+  if (local) return local;
+
+  // Only fall back to Supabase when the job isn't in memory (e.g. after a
+  // server restart or when a different instance handled the job).
   const supabase = getSupabase();
-  if (!supabase) return local;
+  if (!supabase) return undefined;
 
   const path = `${JOB_PREFIX}/${id}.json`;
   const { data, error } = await supabase.storage.from(JOB_BUCKET).download(path);
@@ -172,7 +181,7 @@ export async function getOcrJob(id: string): Promise<OcrJobRecord | undefined> {
     if (error && !error.message.toLowerCase().includes("not found")) {
       console.error(`[ocr-job] failed to load ${id}:`, error.message);
     }
-    return local;
+    return undefined;
   }
 
   try {
