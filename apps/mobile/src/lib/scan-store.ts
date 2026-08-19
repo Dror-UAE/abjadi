@@ -94,6 +94,7 @@ export async function clearScan(id: string): Promise<void> {
   await persistToDisk();
 }
 
+
 export async function setScanDocumentationTitle(
   localScanId: string | undefined,
   title: string

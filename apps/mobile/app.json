@@ -2,14 +2,14 @@
   "expo": {
     "name": "Abjadi",
     "slug": "abjadi",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "abjadi",
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.abjadi.app",
-      "buildNumber": "3",
+      "buildNumber": "4",
       "infoPlist": {
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
@@ -23,7 +23,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.abjadi.app",
-      "versionCode": 4,
+      "versionCode": 5,
       "usesCleartextTraffic": true,
       "permissions": [
         "android.permission.CAMERA",

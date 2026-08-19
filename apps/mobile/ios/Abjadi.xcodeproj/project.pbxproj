@@ -7,11 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0D876C40580130CB5F906169 /* libPods-Abjadi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7C6F9097F5720A21E3C7F631 /* libPods-Abjadi.a */; };
+		1036FAD3E38EF87ACBEEB1F5 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED14A46A5A1AF02FFCA171EF /* ExpoModulesProvider.swift */; };
+		10AFA99F6C890F3EC1315712 /* libPods-Abjadi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5CB5D3DAACD8CC427B78F650 /* libPods-Abjadi.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		8E7500A12FF2D18E5F1FDF67 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 5C01AE0C588EC49557C6E641 /* PrivacyInfo.xcprivacy */; };
-		99CB90657699BC7BC828B4CF /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB28D2C68B21BEEFF77CB52E /* ExpoModulesProvider.swift */; };
+		A2106A85B934487BE57DDB1D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F0A25F5F9075239728CB1F51 /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
@@ -20,14 +20,14 @@
 		13B07F961A680F5B00A75B9A /* Abjadi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Abjadi.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = Abjadi/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = Abjadi/Info.plist; sourceTree = "<group>"; };
-		5673ABF3F30FF9A9B800ABA2 /* Pods-Abjadi.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Abjadi.debug.xcconfig"; path = "Target Support Files/Pods-Abjadi/Pods-Abjadi.debug.xcconfig"; sourceTree = "<group>"; };
-		5C01AE0C588EC49557C6E641 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = Abjadi/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		7C6F9097F5720A21E3C7F631 /* libPods-Abjadi.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Abjadi.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		8B04626D903BFE2E785E2980 /* Pods-Abjadi.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Abjadi.release.xcconfig"; path = "Target Support Files/Pods-Abjadi/Pods-Abjadi.release.xcconfig"; sourceTree = "<group>"; };
+		5CB5D3DAACD8CC427B78F650 /* libPods-Abjadi.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Abjadi.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		84A050E131A9D4811A0BC625 /* Pods-Abjadi.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Abjadi.debug.xcconfig"; path = "Target Support Files/Pods-Abjadi/Pods-Abjadi.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = Abjadi/SplashScreen.storyboard; sourceTree = "<group>"; };
+		B55459A2F4D9643AFEDE9FA0 /* Pods-Abjadi.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Abjadi.release.xcconfig"; path = "Target Support Files/Pods-Abjadi/Pods-Abjadi.release.xcconfig"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		DB28D2C68B21BEEFF77CB52E /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Abjadi/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
+		ED14A46A5A1AF02FFCA171EF /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-Abjadi/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		F0A25F5F9075239728CB1F51 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = Abjadi/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Abjadi/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* Abjadi-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "Abjadi-Bridging-Header.h"; path = "Abjadi/Abjadi-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -37,21 +37,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0D876C40580130CB5F906169 /* libPods-Abjadi.a in Frameworks */,
+				10AFA99F6C890F3EC1315712 /* libPods-Abjadi.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		02C3855F712F6A7C306E96F5 /* ExpoModulesProviders */ = {
-			isa = PBXGroup;
-			children = (
-				EA88A0A929C2A4DEFF3081E2 /* Abjadi */,
-			);
-			name = ExpoModulesProviders;
-			sourceTree = "<group>";
-		};
 		13B07FAE1A68108700A75B9A /* Abjadi */ = {
 			isa = PBXGroup;
 			children = (
@@ -61,7 +53,7 @@
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				5C01AE0C588EC49557C6E641 /* PrivacyInfo.xcprivacy */,
+				F0A25F5F9075239728CB1F51 /* PrivacyInfo.xcprivacy */,
 			);
 			name = Abjadi;
 			sourceTree = "<group>";
@@ -70,9 +62,26 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				7C6F9097F5720A21E3C7F631 /* libPods-Abjadi.a */,
+				5CB5D3DAACD8CC427B78F650 /* libPods-Abjadi.a */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		4F852CBE1F1461B4F2C49CD2 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				84A050E131A9D4811A0BC625 /* Pods-Abjadi.debug.xcconfig */,
+				B55459A2F4D9643AFEDE9FA0 /* Pods-Abjadi.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
+		7716DE797C341D55D62778E8 /* Abjadi */ = {
+			isa = PBXGroup;
+			children = (
+				ED14A46A5A1AF02FFCA171EF /* ExpoModulesProvider.swift */,
+			);
+			name = Abjadi;
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -89,8 +98,8 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				CDF5561DC4435AE8DCB96AD3 /* Pods */,
-				02C3855F712F6A7C306E96F5 /* ExpoModulesProviders */,
+				4F852CBE1F1461B4F2C49CD2 /* Pods */,
+				F7893AFC9DB338D365C179EE /* ExpoModulesProviders */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -114,21 +123,12 @@
 			path = Abjadi/Supporting;
 			sourceTree = "<group>";
 		};
-		CDF5561DC4435AE8DCB96AD3 /* Pods */ = {
+		F7893AFC9DB338D365C179EE /* ExpoModulesProviders */ = {
 			isa = PBXGroup;
 			children = (
-				5673ABF3F30FF9A9B800ABA2 /* Pods-Abjadi.debug.xcconfig */,
-				8B04626D903BFE2E785E2980 /* Pods-Abjadi.release.xcconfig */,
+				7716DE797C341D55D62778E8 /* Abjadi */,
 			);
-			path = Pods;
-			sourceTree = "<group>";
-		};
-		EA88A0A929C2A4DEFF3081E2 /* Abjadi */ = {
-			isa = PBXGroup;
-			children = (
-				DB28D2C68B21BEEFF77CB52E /* ExpoModulesProvider.swift */,
-			);
-			name = Abjadi;
+			name = ExpoModulesProviders;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -139,13 +139,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "Abjadi" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				DF57AF47E89D32C1A4875761 /* [Expo] Configure project */,
+				8E3B0496ECE9E9EC6C11BD3D /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				F45E88AD7E6425820D2889E0 /* [CP] Embed Pods Frameworks */,
+				97524B69E14648A59D231202 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -195,7 +195,7 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				8E7500A12FF2D18E5F1FDF67 /* PrivacyInfo.xcprivacy in Resources */,
+				A2106A85B934487BE57DDB1D /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -275,7 +275,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Abjadi/Pods-Abjadi-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		DF57AF47E89D32C1A4875761 /* [Expo] Configure project */ = {
+		8E3B0496ECE9E9EC6C11BD3D /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -299,7 +299,7 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-Abjadi/expo-configure-project.sh\"\n";
 		};
-		F45E88AD7E6425820D2889E0 /* [CP] Embed Pods Frameworks */ = {
+		97524B69E14648A59D231202 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -355,7 +355,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
-				99CB90657699BC7BC828B4CF /* ExpoModulesProvider.swift in Sources */,
+				1036FAD3E38EF87ACBEEB1F5 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -364,7 +364,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 5673ABF3F30FF9A9B800ABA2 /* Pods-Abjadi.debug.xcconfig */;
+			baseConfigurationReference = 84A050E131A9D4811A0BC625 /* Pods-Abjadi.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -377,7 +377,7 @@
 					"FB_SONARKIT_ENABLED=1",
 				);
 				INFOPLIST_FILE = Abjadi/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_CFBundleDisplayName = Abjadi;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -407,7 +407,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8B04626D903BFE2E785E2980 /* Pods-Abjadi.release.xcconfig */;
+			baseConfigurationReference = B55459A2F4D9643AFEDE9FA0 /* Pods-Abjadi.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -415,7 +415,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = BT9D8KC75D;
 				INFOPLIST_FILE = Abjadi/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_CFBundleDisplayName = Abjadi;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
