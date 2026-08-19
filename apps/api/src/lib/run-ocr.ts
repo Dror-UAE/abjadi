@@ -1,4 +1,3 @@
-import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFile, mkdir, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -8,12 +7,10 @@ import {
   DEFAULT_OCR_MODE,
   getArabicName,
   isModelReady,
-  MODEL_PYTHON,
-  MODEL_ROOT,
-  PREDICT_CLI,
   type OcrMode,
 } from "./model-paths.js";
 import { enrichOcrWithArabic } from "./musnad-translate.js";
+import { runOcrWorker } from "./ocr-worker.js";
 
 export type { OcrMode };
 export { DEFAULT_OCR_MODE };
@@ -122,90 +119,24 @@ function normalizeOcrResult(
   });
 }
 
-function runPredictCli(
-  imagePath: string,
-  outDir: string,
-  mode: OcrMode
-): Promise<RawOcrPayload> {
-  const cliArgs = [
-    PREDICT_CLI,
-    mode === "stone" ? "--stone" : "--paper",
-    "--json",
-    "--out-dir",
-    outDir,
-    imagePath,
-  ];
-
-  return new Promise((resolve, reject) => {
-    const child = spawn(MODEL_PYTHON, cliArgs, {
-      cwd: MODEL_ROOT,
-      env: { ...process.env, PYTHONUNBUFFERED: "1" },
-    });
-
-    let stdout = "";
-    let stderr = "";
-
-    child.stdout.on("data", (chunk: Buffer) => {
-      stdout += chunk.toString("utf8");
-    });
-    child.stderr.on("data", (chunk: Buffer) => {
-      stderr += chunk.toString("utf8");
-    });
-
-    child.on("error", (err) => reject(err));
-
-    child.on("close", (code) => {
-      if (code !== 0) {
-        reject(
-          new Error(
-            stderr.trim() || stdout.trim() || `OCR process exited with code ${code}`
-          )
-        );
-        return;
-      }
-
-      const trimmed = stdout.trim();
-      const start = trimmed.indexOf("{");
-      const end = trimmed.lastIndexOf("}");
-      if (start < 0 || end < start) {
-        reject(new Error(`OCR returned no JSON. stderr: ${stderr.slice(0, 500)}`));
-        return;
-      }
-
-      try {
-        resolve(JSON.parse(trimmed.slice(start, end + 1)) as RawOcrPayload);
-      } catch (err) {
-        reject(
-          new Error(
-            `Failed to parse OCR JSON: ${err instanceof Error ? err.message : String(err)}`
-          )
-        );
-      }
-    });
-  });
-}
-
 async function readOverlayBase64(
-  raw: RawOcrPayload,
+  overlayPath: string | undefined,
   outDir: string
 ): Promise<string | undefined> {
   const candidates = [
-    raw.overlay_path,
+    overlayPath,
     join(outDir, "overlay.png"),
     join(outDir, "detect", "overlay.png"),
   ].filter(Boolean) as string[];
 
-  for (const overlayPath of candidates) {
+  for (const p of candidates) {
     try {
-      const overlayBytes = await readFile(overlayPath);
-      if (overlayBytes.byteLength > 0) {
-        return overlayBytes.toString("base64");
-      }
+      const bytes = await readFile(p);
+      if (bytes.byteLength > 0) return bytes.toString("base64");
     } catch {
-      // try next candidate
+      // try next
     }
   }
-
   return undefined;
 }
 
@@ -221,7 +152,7 @@ export async function runOcr(
       detail:
         mode === "stone"
           ? "Stone OCR weights missing. Run `pnpm setup:model` from the repo root."
-          : "Run `pnpm setup:model` from the repo root (requires Python 3.11 + torch).",
+          : "Run `pnpm setup:model` from the repo root (requires Python 3.x + torch).",
     };
   }
 
@@ -239,8 +170,19 @@ export async function runOcr(
 
   try {
     await writeFile(imagePath, imageBytes);
-    const raw = await runPredictCli(imagePath, outDir, mode);
-    const overlayBase64 = await readOverlayBase64(raw, outDir);
+
+    const response = await runOcrWorker(imagePath, outDir, mode);
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: "ocr_failed",
+        detail: response.error ?? "Unknown OCR error",
+      };
+    }
+
+    const raw = response as unknown as RawOcrPayload;
+    const overlayBase64 = await readOverlayBase64(raw.overlay_path, outDir);
     return normalizeOcrResult(raw, mode, overlayBase64);
   } catch (err) {
     return {

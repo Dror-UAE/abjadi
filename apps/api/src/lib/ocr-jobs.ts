@@ -1,15 +1,13 @@
 import { randomUUID } from "node:crypto";
-import { spawn } from "node:child_process";
 
 import { persistScanAndOcr } from "./persist.js";
 import {
   DEFAULT_OCR_MODE,
   isModelReady,
-  MODEL_PYTHON,
-  MODEL_ROOT,
   type OcrMode,
 } from "./model-paths.js";
 import { runOcr, type OcrError, type OcrResult } from "./run-ocr.js";
+import { warmWorker } from "./ocr-worker.js";
 import { getSupabase, isSupabaseConfigured } from "./supabase.js";
 
 export type OcrJobStatus = "queued" | "running" | "succeeded" | "failed";
@@ -187,41 +185,13 @@ export async function getOcrJob(id: string): Promise<OcrJobRecord | undefined> {
   }
 }
 
-/** Import torch/model in a short-lived process so first OCR is warmer. */
+/** Start the persistent Python worker so the first real request pays no cold-start cost. */
 export function warmOcrModel(): void {
   if (!isModelReady(DEFAULT_OCR_MODE)) {
     console.warn("[ocr] skip warmup — model not ready");
     return;
   }
-
-  const child = spawn(
-    MODEL_PYTHON,
-    [
-      "-c",
-      [
-        "import torch",
-        "print('torch', torch.__version__)",
-        "from inference.paper_ocr import MusnadOCR",
-        "from inference.stone_ocr import MusnadStoneOCR",
-        "print('paper_ocr_import_ok', MusnadOCR.__name__)",
-        "print('stone_ocr_import_ok', MusnadStoneOCR.__name__)",
-      ].join("; "),
-    ],
-    {
-      cwd: MODEL_ROOT,
-      env: { ...process.env, PYTHONUNBUFFERED: "1" },
-    }
-  );
-
-  child.stdout.on("data", (chunk: Buffer) => {
-    console.log("[ocr-warmup]", chunk.toString("utf8").trim());
-  });
-  child.stderr.on("data", (chunk: Buffer) => {
-    console.warn("[ocr-warmup]", chunk.toString("utf8").trim());
-  });
-  child.on("close", (code) => {
-    console.log(`[ocr-warmup] finished code=${code}`);
-  });
+  warmWorker();
 }
 
 export async function runOcrAndPersist(

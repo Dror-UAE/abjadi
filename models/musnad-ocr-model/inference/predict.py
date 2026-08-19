@@ -192,7 +192,7 @@ class MusnadCNN(nn.Module):
 
 
 def load_model(path: Path, device: torch.device) -> Tuple[MusnadCNN, dict]:
-    ckpt = torch.load(path, map_location=device, weights_only=False)
+    ckpt = torch.load(path, map_location=device, weights_only=True)
     model = MusnadCNN(num_classes=ckpt.get("num_classes", NUM_CLASSES))
     model.load_state_dict(ckpt["model_state"], strict=False)
     model.to(device)
