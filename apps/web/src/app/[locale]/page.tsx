@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { DemoVideo } from "../../components/demo-video-1";
+import { DemoVideo } from "../../components/demo-video";
 import { EarlyAccessForm } from "../../components/early-access-form";
 import { SiteHeader } from "../../components/site-header";
 import { Link } from "../../i18n/navigation";
