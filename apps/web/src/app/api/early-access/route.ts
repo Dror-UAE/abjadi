@@ -1,8 +1,51 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { NextResponse } from "next/server";
+import nodemailer from "nodemailer";
 
 export const runtime = "nodejs";
+
+function createTransporter() {
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || "smtp.hostinger.com",
+    port: Number(process.env.SMTP_PORT || 465),
+    secure: process.env.SMTP_SECURE !== "false",
+    auth: {
+      user: process.env.SMTP_USER || "info@abjadi.ai",
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
+
+async function sendNotificationEmail(submission: EarlyAccessSubmission): Promise<void> {
+  const to = process.env.SMTP_TO || process.env.SMTP_USER || "info@abjadi.ai";
+  const transporter = createTransporter();
+
+  const lines = [
+    `الاسم: ${submission.name || "—"}`,
+    `البريد الإلكتروني: ${submission.email}`,
+    `نوع المستخدم: ${submission.userType}`,
+    submission.organizationName ? `المؤسسة: ${submission.organizationName}` : null,
+    `التاريخ: ${new Date(submission.createdAt).toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}`,
+  ].filter(Boolean).join("\n");
+
+  await transporter.sendMail({
+    from: `"أبجدي" <${process.env.SMTP_USER || "info@abjadi.ai"}>`,
+    to,
+    subject: `طلب وصول مبكر جديد — ${submission.email}`,
+    text: `طلب وصول مبكر جديد:\n\n${lines}`,
+    html: `<div dir="rtl" style="font-family:Arial,sans-serif;line-height:1.7">
+<h2>طلب وصول مبكر جديد</h2>
+<table style="border-collapse:collapse">
+<tr><td style="padding:4px 12px;font-weight:bold">الاسم</td><td>${submission.name || "—"}</td></tr>
+<tr><td style="padding:4px 12px;font-weight:bold">البريد الإلكتروني</td><td>${submission.email}</td></tr>
+<tr><td style="padding:4px 12px;font-weight:bold">نوع المستخدم</td><td>${submission.userType}</td></tr>
+${submission.organizationName ? `<tr><td style="padding:4px 12px;font-weight:bold">المؤسسة</td><td>${submission.organizationName}</td></tr>` : ""}
+<tr><td style="padding:4px 12px;font-weight:bold">التاريخ</td><td>${new Date(submission.createdAt).toLocaleString("ar-SA", { timeZone: "Asia/Riyadh" })}</td></tr>
+</table>
+</div>`,
+  });
+}
 
 type EarlyAccessSubmission = {
   name: string | null;
@@ -94,6 +137,13 @@ export async function POST(request: Request) {
 
     await mkdir(DATA_DIR, { recursive: true });
     await writeFile(DATA_FILE, JSON.stringify(next, null, 2), "utf-8");
+
+    // Send email notification — log but don't fail the request if it errors.
+    try {
+      await sendNotificationEmail(submission);
+    } catch (emailErr) {
+      console.error("[early-access] email send failed:", emailErr);
+    }
 
     return NextResponse.json({ ok: true }, { status: 201 });
   } catch {

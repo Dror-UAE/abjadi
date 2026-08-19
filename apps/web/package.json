@@ -15,6 +15,7 @@
     "@abjadi/ui": "workspace:*",
     "next": "^15.3.1",
     "next-intl": "^4.13.4",
+    "nodemailer": "^9.0.5",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
@@ -22,6 +23,7 @@
     "@abjadi/eslint-config": "workspace:*",
     "@abjadi/typescript-config": "workspace:*",
     "@types/node": "^22.15.0",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "eslint": "^9.25.0",
