@@ -1,4 +1,4 @@
-app = "abjadi-api"
+app = "abjadi"
 primary_region = "bom"
 
 [build]
