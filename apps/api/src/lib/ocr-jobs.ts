@@ -1,10 +1,16 @@
 import { randomUUID } from "node:crypto";
+import { spawn } from "node:child_process";
 
 import { persistScanAndOcr } from "./persist.js";
-import { runPaperOcr, type OcrError, type OcrResult } from "./run-ocr.js";
-import { isModelReady, MODEL_PYTHON, MODEL_ROOT } from "./model-paths.js";
+import {
+  DEFAULT_OCR_MODE,
+  isModelReady,
+  MODEL_PYTHON,
+  MODEL_ROOT,
+  type OcrMode,
+} from "./model-paths.js";
+import { runOcr, type OcrError, type OcrResult } from "./run-ocr.js";
 import { getSupabase, isSupabaseConfigured } from "./supabase.js";
-import { spawn } from "node:child_process";
 
 export type OcrJobStatus = "queued" | "running" | "succeeded" | "failed";
 
@@ -18,6 +24,7 @@ export type OcrJobSuccess = OcrResult & {
 export type OcrJobRecord = {
   id: string;
   status: OcrJobStatus;
+  mode: OcrMode;
   createdAt: number;
   updatedAt: number;
   error?: string;
@@ -96,7 +103,12 @@ async function finalizeOcr(
   };
 }
 
-async function runJob(jobId: string, imageBytes: Buffer, filename: string): Promise<void> {
+async function runJob(
+  jobId: string,
+  imageBytes: Buffer,
+  filename: string,
+  mode: OcrMode
+): Promise<void> {
   const job = jobs.get(jobId);
   if (!job) return;
 
@@ -104,7 +116,7 @@ async function runJob(jobId: string, imageBytes: Buffer, filename: string): Prom
   await saveJob(job);
 
   try {
-    const result = await runPaperOcr(imageBytes, filename);
+    const result = await runOcr(imageBytes, filename, mode);
     if (!result.ok) {
       job.status = "failed";
       job.error = result.error;
@@ -130,7 +142,8 @@ async function runJob(jobId: string, imageBytes: Buffer, filename: string): Prom
 
 export async function createOcrJob(
   imageBytes: Buffer,
-  filename: string
+  filename: string,
+  mode: OcrMode = DEFAULT_OCR_MODE
 ): Promise<OcrJobRecord> {
   pruneJobs();
   const id = randomUUID();
@@ -138,16 +151,13 @@ export async function createOcrJob(
   const job: OcrJobRecord = {
     id,
     status: "queued",
+    mode,
     createdAt: now,
     updatedAt: now,
   };
 
-  // Persist before responding 202, so a poll routed to another Fly machine can find it.
   await saveJob(job);
-
-  // Fire-and-forget; client polls GET /ocr/jobs/:id
-  void runJob(id, imageBytes, filename);
-
+  void runJob(id, imageBytes, filename, mode);
   return job;
 }
 
@@ -179,7 +189,7 @@ export async function getOcrJob(id: string): Promise<OcrJobRecord | undefined> {
 
 /** Import torch/model in a short-lived process so first OCR is warmer. */
 export function warmOcrModel(): void {
-  if (!isModelReady()) {
+  if (!isModelReady(DEFAULT_OCR_MODE)) {
     console.warn("[ocr] skip warmup — model not ready");
     return;
   }
@@ -188,7 +198,14 @@ export function warmOcrModel(): void {
     MODEL_PYTHON,
     [
       "-c",
-      "import torch; print('torch', torch.__version__); from inference.paper_ocr import PaperOcrEngine; print('paper_ocr_import_ok')",
+      [
+        "import torch",
+        "print('torch', torch.__version__)",
+        "from inference.paper_ocr import MusnadOCR",
+        "from inference.stone_ocr import MusnadStoneOCR",
+        "print('paper_ocr_import_ok', MusnadOCR.__name__)",
+        "print('stone_ocr_import_ok', MusnadStoneOCR.__name__)",
+      ].join("; "),
     ],
     {
       cwd: MODEL_ROOT,
@@ -209,9 +226,10 @@ export function warmOcrModel(): void {
 
 export async function runOcrAndPersist(
   imageBytes: Buffer,
-  filename: string
+  filename: string,
+  mode: OcrMode = DEFAULT_OCR_MODE
 ): Promise<OcrJobSuccess | OcrError> {
-  const result = await runPaperOcr(imageBytes, filename);
+  const result = await runOcr(imageBytes, filename, mode);
   if (!result.ok) return result;
   return finalizeOcr(imageBytes, filename, result);
 }

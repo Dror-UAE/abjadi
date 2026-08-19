@@ -32,24 +32,24 @@ pnpm typecheck        # typecheck all packages
 ```
 
 - Web: http://localhost:3000
-- API: http://localhost:3001
+- API: http://localhost:3500
 - Mobile: Expo Dev Tools (from `pnpm dev:mobile`)
-- Model: `models/musnad-ocr-model` (Python; see package README)
+- Model: `models/musnad-ocr-model` (Python v0.5.0 — stone OCR + full-image overlay via `MusnadStoneOCR`; paper via `MusnadOCR`; see package README)
 
 ## Mobile ↔ OCR loop
 
 1. `pnpm setup:model` (once)
-2. `pnpm dev:api` — serves `POST /ocr` on port 3001 (binds `0.0.0.0`)
+2. `pnpm dev:api` — serves `POST /ocr` on port 3500 (binds `0.0.0.0`, default mode `stone`)
 3. Point the app at the API:
-   - Simulator: `EXPO_PUBLIC_API_URL=http://localhost:3001`
-   - Physical device: `EXPO_PUBLIC_API_URL=http://<your-lan-ip>:3001`
+   - iOS Simulator: `EXPO_PUBLIC_API_URL=http://127.0.0.1:3500`
+   - Physical device: `EXPO_PUBLIC_API_URL=http://<your-lan-ip>:3500`
 4. `pnpm dev:mobile` — capture/crop → Analyzing uploads → Result shows model text
 
 Smoke-test the API:
 
 ```bash
-curl -s http://localhost:3001/health
-curl -s -F "image=@models/musnad-ocr-model/test.png" http://localhost:3001/ocr | head
+curl -s http://localhost:3500/health
+curl -s -F "image=@path/to/stone.jpg" "http://localhost:3500/ocr?mode=stone" | head
 ```
 
 ## Supabase (scans + documentation)

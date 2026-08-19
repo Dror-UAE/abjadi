@@ -49,7 +49,7 @@ export type ScanDetail = ScanSummary & {
     lines: unknown;
     glyphs: unknown;
     device: string;
-    mode: "paper";
+    mode: "paper" | "stone";
   };
 };
 
@@ -216,7 +216,7 @@ export async function getScanById(scanId: string): Promise<ScanDetail | null> {
       lines: ocr.lines,
       glyphs: ocr.glyphs,
       device: ocr.device ?? "unknown",
-      mode: "paper",
+      mode: ocr.mode === "paper" ? "paper" : "stone",
     },
   };
 }

@@ -15,6 +15,8 @@ export type OcrLine = {
   glyphs: OcrGlyph[];
 };
 
+export type OcrMode = 'paper' | 'stone';
+
 export type OcrSuccess = {
   ok: true;
   text: string;
@@ -26,7 +28,7 @@ export type OcrSuccess = {
   lines: OcrLine[];
   glyphs: OcrGlyph[];
   device: string;
-  mode: 'paper';
+  mode: OcrMode;
   overlayBase64?: string;
   /** Supabase scan row id (when API persistence is enabled) */
   scanId?: string;
@@ -106,7 +108,7 @@ export type ScanDetailResponse =
           lines: OcrLine[];
           glyphs: OcrGlyph[];
           device: string;
-          mode: 'paper';
+          mode: 'paper' | 'stone';
         };
       };
     }

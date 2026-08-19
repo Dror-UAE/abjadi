@@ -174,7 +174,7 @@ export function recordFromServerDetail(detail: {
     lines: OcrLine[];
     glyphs: OcrGlyph[];
     device: string;
-    mode: 'paper';
+    mode: 'paper' | 'stone';
   };
 }): ScanRecord {
   const existing = getScanByServerId(detail.id);

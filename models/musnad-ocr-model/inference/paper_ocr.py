@@ -1,5 +1,5 @@
 """
-Musnad paper / manuscript line OCR (v0.3.2).
+Musnad paper / manuscript line OCR (v0.5.0).
 
 Pipeline (clean paper domain):
   1. Detect discrete glyphs on light paper (projection + gap word breaks)

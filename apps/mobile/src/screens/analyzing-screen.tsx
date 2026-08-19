@@ -30,7 +30,7 @@ import { ArabicText } from '@/components/arabic-text';
 import { FlowChrome, Palette, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, checkApiHealth, getApiBaseUrl, uploadOcr } from '@/lib/api';
-import { isLikelyNetworkError, loadApiConfig, setApiBaseUrl } from '@/lib/api-config';
+import { isLikelyNetworkError, loadApiConfig, setApiBaseUrl, apiUrlHint, isDevSimulator } from '@/lib/api-config';
 import { saveScan } from '@/lib/scan-store';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -397,8 +397,14 @@ export function AnalyzingScreen() {
       }
       setError(null);
       setRetryKey((k) => k + 1);
-    } catch {
-      setError(`تعذر الوصول إلى ${getApiBaseUrl()}`);
+    } catch (err) {
+      const base = getApiBaseUrl();
+      const hint = isDevSimulator() ? ' — على المحاكي استخدم http://127.0.0.1:3500' : '';
+      setError(
+        `تعذر الوصول إلى ${base}${hint}${
+          err instanceof Error && err.message ? ` (${err.message})` : ''
+        }`
+      );
     } finally {
       setSavingServer(false);
     }
@@ -476,7 +482,7 @@ export function AnalyzingScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
-              placeholder="http://192.168.x.x:3001"
+              placeholder="http://127.0.0.1:3500"
               placeholderTextColor={flow.textMuted}
               style={[
                 styles.serverInput,
@@ -488,7 +494,7 @@ export function AnalyzingScreen() {
               ]}
             />
             <ArabicText style={[styles.serverHint, { color: flow.textMuted }]}>
-              Mac: ipconfig getifaddr en0 — نفس شبكة Wi‑Fi، بدون USB
+              {apiUrlHint()}
             </ArabicText>
             <Pressable
               accessibilityRole="button"

@@ -1135,8 +1135,15 @@ def predict_image(
     image_path: str | Path,
     *,
     force_cpu: bool = False,
+    checkpoint=None,
+    device=None,
+    save_debug=None,
     **kwargs,
 ) -> dict:
-    """One-shot prediction helper."""
+    """One-shot prediction helper (legacy kwargs from stone detect merge)."""
+    if device is not None:
+        force_cpu = str(device) == "cpu"
+    kwargs.pop("checkpoint", None)
+    kwargs.pop("save_debug", None)
     predictor = MusnadPredictor(force_cpu=force_cpu)
     return predictor.predict(image_path, **kwargs)

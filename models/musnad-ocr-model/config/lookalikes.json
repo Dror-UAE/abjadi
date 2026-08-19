@@ -1,6 +1,6 @@
 {
   "description": "Lookalike pairs and shape families for Musnad OCR",
-  "version": "0.3.2",
+  "version": "0.5.0",
   "pairs": [
     {
       "a": "𐩩",

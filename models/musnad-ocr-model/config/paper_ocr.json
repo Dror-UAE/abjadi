@@ -2,7 +2,7 @@
   "domain": "paper",
   "direction": "rtl",
   "glyph_order": "rtl_logical",
-  "version": "0.3.2",
+  "version": "0.5.0",
   "word_separator": {
     "label": "NUM_1",
     "display": "|",

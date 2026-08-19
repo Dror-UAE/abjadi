@@ -1,7 +1,7 @@
 """
 Musnad / Old South Arabian writing rules for layout OCR.
 
-Paper-first v0.3.2 assumes clean manuscript rules:
+Paper-first v0.5.0 assumes clean manuscript rules:
 
   - Default reading direction: right-to-left (RTL)
   - Letters are separate (not cursive)

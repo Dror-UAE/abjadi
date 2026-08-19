@@ -32,11 +32,16 @@ def json_ready(value: object) -> object:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run Musnad OCR on an image")
-    parser.add_argument("image", help="Path to glyph or paper image")
+    parser.add_argument("image", help="Path to glyph, paper line, or stone photo")
     parser.add_argument(
         "--paper",
         action="store_true",
-        help="Full-page paper OCR (detect lines + glyphs). Use for multi-character images.",
+        help="Paper / manuscript line OCR (MusnadOCR).",
+    )
+    parser.add_argument(
+        "--stone",
+        action="store_true",
+        help="Stone inscription OCR (MusnadStoneOCR).",
     )
     parser.add_argument(
         "--gpu",
@@ -58,55 +63,66 @@ def main() -> int:
         "--out-dir",
         type=Path,
         default=None,
-        help="Where to write paper-OCR overlay (default: outputs/<image-stem>)",
+        help="Where to write OCR overlay + result.json",
     )
     args = parser.parse_args()
 
+    if args.paper and args.stone:
+        print("Use only one of --paper or --stone.", file=sys.stderr)
+        return 2
+
     force_cpu = not args.gpu
+    image_path = Path(args.image)
+    out_dir = args.out_dir or (Path("outputs") / image_path.stem)
 
     if args.paper:
         from inference.paper_ocr import recognize_paper
 
-        out_dir = args.out_dir or (Path("outputs") / Path(args.image).stem)
         result = recognize_paper(
-            args.image, force_cpu=force_cpu, out_dir=out_dir
+            image_path, force_cpu=force_cpu, out_dir=out_dir
         )
-        if args.json:
-            json.dump(json_ready(result), sys.stdout, ensure_ascii=False)
-            sys.stdout.write("\n")
-        else:
-            text = result.get("text") or ""
-            print(text)
-            print(
-                f"\n({result.get('n_lines', 0)} lines, "
-                f"{result.get('n_glyphs', 0)} glyphs, device={result.get('device')})"
-            )
-            overlay = result.get("overlay_path")
-            if overlay:
-                print(f"overlay: {overlay}")
-        return 0
+    elif args.stone:
+        from inference.stone_ocr import recognize_stone_image
 
-    from inference.predict import predict_image
+        result = recognize_stone_image(
+            image_path, force_cpu=force_cpu, out_dir=out_dir
+        )
+    else:
+        from inference.predict import predict_image
 
-    result = predict_image(args.image, force_cpu=force_cpu, top_k=args.top_k)
+        result = predict_image(image_path, force_cpu=force_cpu, top_k=args.top_k)
+
     if args.json:
         json.dump(json_ready(result), sys.stdout, ensure_ascii=False)
         sys.stdout.write("\n")
-    else:
-        ch = result.get("character") or "?"
-        name = result.get("name") or ""
-        conf = float(result.get("confidence") or 0.0)
-        src = result.get("source") or ""
-        print(f"{ch}  {name}  conf={conf:.3f}  source={src}")
-        trust = result.get("trust") or {}
-        if trust:
-            print(
-                f"trusted={trust.get('trusted')}  "
-                f"reason={trust.get('reason')}"
-            )
+        return 0
+
+    if args.paper or args.stone:
+        text = result.get("text") or ""
+        print(text)
         print(
-            "\n(tip: for multi-character / full-page images, re-run with --paper)"
+            f"\n({result.get('n_lines', 0)} lines, "
+            f"{result.get('n_glyphs', 0)} glyphs, device={result.get('device')})"
         )
+        overlay = result.get("overlay_path")
+        if overlay:
+            print(f"overlay: {overlay}")
+        return 0
+
+    ch = result.get("character") or "?"
+    name = result.get("name") or ""
+    conf = float(result.get("confidence") or 0.0)
+    src = result.get("source") or ""
+    print(f"{ch}  {name}  conf={conf:.3f}  source={src}")
+    trust = result.get("trust") or {}
+    if trust:
+        print(
+            f"trusted={trust.get('trusted')}  "
+            f"reason={trust.get('reason')}"
+        )
+    print(
+        "\n(tip: for multi-character / full-page images, re-run with --paper or --stone)"
+    )
     return 0
 
 

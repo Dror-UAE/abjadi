@@ -107,7 +107,40 @@ def prepare_original_view(
     return canvas.resize((size, size), Image.Resampling.LANCZOS)
 
 
+# SYNC:STONE_PREPROCESS_BEGIN
+def _ink_fraction(binary_white_ink: np.ndarray) -> float:
+    """Fraction of pixels that are ink (white=255 in stroke masks)."""
+    if binary_white_ink.size == 0:
+        return 0.0
+    return float((binary_white_ink > 0).mean())
+
+
+def _clean_stroke_mask(
+    binary: np.ndarray,
+    *,
+    close_ksize: int = 5,
+    close_iters: int = 2,
+    open_iters: int = 2,
+    fill_hollow: bool = True,
+    dilate_iters: int = 1,
+) -> np.ndarray:
+    close_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (close_ksize, close_ksize))
+    open_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    out = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, close_k, iterations=close_iters)
+    out = cv2.morphologyEx(out, cv2.MORPH_OPEN, open_k, iterations=open_iters)
+    out = _keep_largest_component(out)
+    if fill_hollow:
+        out = _fill_if_hollow(out)
+    if dilate_iters > 0:
+        dilate_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        out = cv2.dilate(out, dilate_k, iterations=dilate_iters)
+    return out
+
+
 def _fill_if_hollow(binary_white_ink: np.ndarray) -> np.ndarray:
+    """
+    Fill hollow ring masks unless that would solidify zig-zag stone letters.
+    """
     h, w = binary_white_ink.shape
     ff = binary_white_ink.copy()
     mask = np.zeros((h + 2, w + 2), np.uint8)
@@ -116,9 +149,13 @@ def _fill_if_hollow(binary_white_ink: np.ndarray) -> np.ndarray:
             cv2.floodFill(ff, mask, seed, 128)
     holes = (ff == 0).astype(np.uint8) * 255
     filled = cv2.bitwise_or(binary_white_ink, holes)
-    if filled.sum() > 3 * max(binary_white_ink.sum(), 1):
+    before_frac = _ink_fraction(binary_white_ink)
+    after_frac = _ink_fraction(filled)
+    if filled.sum() > 1.6 * max(binary_white_ink.sum(), 1):
         return binary_white_ink
-    if holes.sum() > 0.05 * binary_white_ink.size:
+    if after_frac > 0.42 or (after_frac - before_frac) > 0.12:
+        return binary_white_ink
+    if holes.sum() > 0.05 * binary_white_ink.size and after_frac <= 0.42:
         return filled
     return binary_white_ink
 
@@ -147,6 +184,22 @@ def _normalize_brightness(img: np.ndarray) -> np.ndarray:
         return img
     out = (img.astype(np.float32) - lo) * (255.0 / (hi - lo))
     return np.clip(out, 0, 255).astype(np.uint8)
+
+
+def _enhance_stone_crop_fallback(bgr: np.ndarray) -> np.ndarray:
+    """Continuous-tone fallback when binary mask is unusable (synced v0.5.0)."""
+    gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
+    denoised = cv2.fastNlMeansDenoising(gray, None, 7, 7, 21)
+    denoised = cv2.bilateralFilter(
+        denoised,
+        int(STONE_CFG["bilateral_d"]),
+        float(STONE_CFG["bilateral_sigma_color"]),
+        float(STONE_CFG["bilateral_sigma_space"]),
+    )
+    return cv2.createCLAHE(
+        clipLimit=float(STONE_CFG["clahe_clip"]),
+        tileGridSize=(int(STONE_CFG["clahe_tile"]), int(STONE_CFG["clahe_tile"])),
+    ).apply(denoised)
 
 
 def preprocess_stone_inscription(image: Image.Image) -> Tuple[np.ndarray, dict]:
@@ -199,15 +252,30 @@ def preprocess_stone_inscription(image: Image.Image) -> Tuple[np.ndarray, dict]:
     )
 
     binary = cv2.bitwise_or(groove_mask, edges)
-    close_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    open_k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, close_k, iterations=2)
-    binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, open_k, iterations=2)
-    binary = _keep_largest_component(binary)
-    binary = _fill_if_hollow(binary)
-    binary = cv2.dilate(
-        binary, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=1
-    )
+    binary = _clean_stroke_mask(binary)
+
+    if _ink_fraction(binary) > 0.42:
+        mild = _clean_stroke_mask(
+            groove_mask,
+            close_ksize=3,
+            close_iters=1,
+            open_iters=1,
+            fill_hollow=False,
+            dilate_iters=0,
+        )
+        if 0.04 <= _ink_fraction(mild) <= 0.42:
+            binary = mild
+        else:
+            edge_only = _clean_stroke_mask(
+                edges,
+                close_ksize=3,
+                close_iters=1,
+                open_iters=1,
+                fill_hollow=False,
+                dilate_iters=0,
+            )
+            if 0.04 <= _ink_fraction(edge_only) < _ink_fraction(binary):
+                binary = edge_only
 
     ink_on_white = cv2.bitwise_not(binary)
     ink_on_white = _normalize_brightness(ink_on_white)
@@ -216,12 +284,30 @@ def preprocess_stone_inscription(image: Image.Image) -> Tuple[np.ndarray, dict]:
 
 def stone_to_model_image(image: Image.Image, size: int = IMG_SIZE) -> Image.Image:
     ink_on_white, _ = preprocess_stone_inscription(image)
+    ink_frac = float((ink_on_white < 128).mean())
+    ink_mask = (ink_on_white < 128).astype(np.uint8) * 255
+    n_comp = 0
+    if ink_mask.any():
+        n_comp = int(cv2.connectedComponents(ink_mask, connectivity=8)[0]) - 1
+    if ink_frac > 0.42 or ink_frac < 0.04 or n_comp > 12:
+        bgr = _to_bgr_uint8(image)
+        enhanced = _enhance_stone_crop_fallback(bgr)
+        h, w = enhanced.shape[:2]
+        side = max(h, w)
+        canvas = np.full((side, side), LETTERBOX_FILL, dtype=np.uint8)
+        oy = (side - h) // 2
+        ox = (side - w) // 2
+        canvas[oy : oy + h, ox : ox + w] = enhanced
+        return Image.fromarray(canvas, mode="L").resize(
+            (size, size), Image.Resampling.LANCZOS
+        )
     pil = Image.fromarray(ink_on_white, mode="L")
     return normalize_glyph(pil.convert("RGBA"), size=size)
 
 
 def prepare_stone_view(image: Image.Image, size: int = IMG_SIZE) -> Image.Image:
     return stone_to_model_image(image, size=size)
+# SYNC:STONE_PREPROCESS_END
 
 
 def estimate_glyph_skew_deg(image: Image.Image, *, max_abs: float = DESKEW_MAX_ABS) -> float:

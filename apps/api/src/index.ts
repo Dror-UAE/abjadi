@@ -5,7 +5,7 @@ import { Hono, type Context } from "hono";
 import { cors } from "hono/cors";
 
 import { getMobileConfig } from "./lib/mobile-config.js";
-import { isModelReady } from "./lib/model-paths.js";
+import { getModelInfo, parseOcrMode, type OcrMode } from "./lib/model-paths.js";
 import { createOcrJob, getOcrJob, runOcrAndPersist, warmOcrModel } from "./lib/ocr-jobs.js";
 import { persistDocumentation } from "./lib/persist.js";
 import { getScanById, listScans, deleteScanById } from "./lib/scans.js";
@@ -17,19 +17,25 @@ const MAX_BYTES = 12 * 1024 * 1024;
 app.use("*", cors());
 
 app.get("/", (c) => {
+  const model = getModelInfo();
   return c.json({
     name: "abjadi-api",
     status: "ok",
-    modelReady: isModelReady(),
+    modelReady: model.ready,
+    modelVersion: model.version,
     supabaseConfigured: isSupabaseConfigured(),
   });
 });
 
 app.get("/health", (c) => {
-  const modelReady = isModelReady();
+  const model = getModelInfo();
   return c.json({
-    status: modelReady ? "healthy" : "degraded",
-    modelReady,
+    status: model.ready ? "healthy" : "degraded",
+    modelReady: model.ready,
+    modelVersion: model.version,
+    modelSyncedAt: model.syncedAt,
+    stoneReady: model.stoneReady,
+    paperReady: model.paperReady,
     supabaseConfigured: isSupabaseConfigured(),
   });
 });
@@ -48,11 +54,18 @@ type JsonOcrBody = {
   imageBase64?: string;
   filename?: string;
   mimeType?: string;
+  mode?: string;
 };
 
 type ImageParseResult =
-  | { bytes: Buffer; filename: string }
+  | { bytes: Buffer; filename: string; mode: OcrMode }
   | { error: string; detail?: string; status: 400 | 413 };
+
+function resolveOcrMode(c: Context, body?: JsonOcrBody): OcrMode {
+  return parseOcrMode(
+    body?.mode ?? c.req.header("x-abjadi-ocr-mode") ?? c.req.query("mode")
+  );
+}
 
 async function readImageFromRequest(c: Context): Promise<ImageParseResult> {
   const contentType = c.req.header("content-type") ?? "";
@@ -93,6 +106,7 @@ async function readImageFromRequest(c: Context): Promise<ImageParseResult> {
     return {
       bytes,
       filename: body.filename || "scan.jpg",
+      mode: resolveOcrMode(c, body),
     };
   }
 
@@ -122,7 +136,11 @@ async function readImageFromRequest(c: Context): Promise<ImageParseResult> {
     };
   }
 
-  return { bytes, filename: upload.name || "scan.jpg" };
+  return {
+    bytes,
+    filename: upload.name || "scan.jpg",
+    mode: resolveOcrMode(c),
+  };
 }
 
 app.post("/ocr", async (c) => {
@@ -140,13 +158,14 @@ app.post("/ocr", async (c) => {
 
   if (asyncMode) {
     try {
-      const job = await createOcrJob(parsed.bytes, parsed.filename);
+      const job = await createOcrJob(parsed.bytes, parsed.filename, parsed.mode);
       return c.json(
         {
           ok: true,
           async: true,
           jobId: job.id,
           status: job.status,
+          mode: job.mode,
           pollUrl: `/ocr/jobs/${job.id}`,
         },
         202
@@ -160,7 +179,7 @@ app.post("/ocr", async (c) => {
     }
   }
 
-  const result = await runOcrAndPersist(parsed.bytes, parsed.filename);
+  const result = await runOcrAndPersist(parsed.bytes, parsed.filename, parsed.mode);
 
   if (!result.ok) {
     const status = result.error === "model_not_ready" ? 503 : 500;
@@ -361,8 +380,11 @@ const port = Number(process.env.PORT ?? 3500);
 const hostname = process.env.HOST ?? "0.0.0.0";
 
 serve({ fetch: app.fetch, port, hostname }, () => {
+  const model = getModelInfo();
   console.log(`API listening on http://${hostname}:${port}`);
-  console.log(`Model ready: ${isModelReady()}`);
+  console.log(
+    `Model ready: ${model.ready}${model.version ? ` (v${model.version})` : ""}`
+  );
   console.log(`Supabase: ${isSupabaseConfigured() ? "configured" : "not configured"}`);
   warmOcrModel();
 });

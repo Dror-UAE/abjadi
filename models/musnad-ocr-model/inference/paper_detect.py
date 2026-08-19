@@ -589,6 +589,7 @@ def draw_boxes(
             )
     return Image.fromarray(rgb)
 
+
 def _load_annotation_font(size: int = 14):
     from PIL import ImageFont
 
@@ -616,7 +617,7 @@ def draw_annotations(
     separator_color: Tuple[int, int, int] = (180, 90, 40),
     unknown_color: Tuple[int, int, int] = (170, 50, 50),
 ) -> Image.Image:
-    """Draw glyph boxes + labels on a copy of the original image."""
+    """Draw glyph boxes + identify labels on a copy of the full image."""
     from PIL import ImageDraw
 
     canvas = image.convert("RGB").copy()
@@ -667,10 +668,7 @@ def draw_annotations(
         ly = y0 - th - 2 * pad - 2
         if ly < 0:
             ly = y0 + 2
-        draw.rectangle(
-            [lx, ly, lx + tw + 2 * pad, ly + th + 2 * pad],
-            fill=color,
-        )
+        draw.rectangle([lx, ly, lx + tw + 2 * pad, ly + th + 2 * pad], fill=color)
         draw.text((lx + pad, ly + pad), text, fill=(255, 255, 255), font=font_small)
 
         if not is_sep and ch and ch not in {"?", "UNKNOWN"} and not str(ch).startswith("NUM_"):

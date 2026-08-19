@@ -1,0 +1,43 @@
+{
+  "domain": "stone",
+  "direction": "rtl",
+  "version": "0.5.0",
+  "word_separator": {
+    "label": "NUM_1",
+    "display": "|",
+    "unicode": "𐩽"
+  },
+  "detection": {
+    "note": "Full stone line + letter detect via inference/stone_ocr.py (MusnadStoneOCR).",
+    "weights": {
+      "letter_boundary_v2": "model/letter_boundary_v2.pth"
+    },
+    "oversplit_merge": []
+  },
+  "classification": {
+    "compare_preprocess": true,
+    "use_prototypes": true,
+    "letters_only": false,
+    "soft_empty_filter": true
+  },
+  "preprocess": {
+    "stone_mask_max_ink_fraction": 0.42,
+    "stone_mask_min_ink_fraction": 0.04,
+    "stone_mask_max_components": 12,
+    "hollow_fill_max_ink_fraction": 0.42,
+    "fallback_to_line_enhance": true
+  },
+  "pipeline": [
+    "line_banding_stone_glyph_segmentation",
+    "letter_detect_segment_v2_boundary_only",
+    "classify_each_crop_stone_preprocess",
+    "split_words_by_separator"
+  ],
+  "notes": [
+    "Full stone inscription OCR: MusnadStoneOCR (NOT MusnadOCR).",
+    "Writes full-image overlay.png with boxes, names, and confidence (save_overlay=True).",
+    "Single-glyph stone classify: MusnadPredictor with compare_preprocess=True.",
+    "Stone binary preprocess avoids solidifying zig-zag letters (SHIN/MEM/TAW).",
+    "Do not force SHIN->MEM overrides; trust CNN when confident."
+  ]
+}

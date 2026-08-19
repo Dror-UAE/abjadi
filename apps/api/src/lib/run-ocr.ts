@@ -5,13 +5,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  DEFAULT_OCR_MODE,
   getArabicName,
   isModelReady,
   MODEL_PYTHON,
   MODEL_ROOT,
   PREDICT_CLI,
+  type OcrMode,
 } from "./model-paths.js";
 import { enrichOcrWithArabic } from "./musnad-translate.js";
+
+export type { OcrMode };
+export { DEFAULT_OCR_MODE };
 
 export type OcrGlyph = {
   character: string;
@@ -39,7 +44,7 @@ export type OcrResult = {
   lines: OcrLine[];
   glyphs: OcrGlyph[];
   device: string;
-  mode: "paper";
+  mode: OcrMode;
   overlayBase64?: string;
 };
 
@@ -63,7 +68,7 @@ type RawLine = {
   glyphs?: RawGlyph[];
 };
 
-type RawPaperResult = {
+type RawOcrPayload = {
   ok?: boolean;
   text?: string;
   n_lines?: number;
@@ -72,6 +77,7 @@ type RawPaperResult = {
   glyphs?: RawGlyph[];
   device?: string;
   overlay_path?: string;
+  mode?: string;
 };
 
 function mapGlyph(raw: RawGlyph): OcrGlyph {
@@ -87,39 +93,54 @@ function mapGlyph(raw: RawGlyph): OcrGlyph {
   };
 }
 
-function normalizePaperResult(
-  raw: RawPaperResult,
+function flattenGlyphs(lines: OcrLine[], topLevel: OcrGlyph[]): OcrGlyph[] {
+  if (topLevel.length > 0) return topLevel;
+  return lines.flatMap((line) => line.glyphs);
+}
+
+function normalizeOcrResult(
+  raw: RawOcrPayload,
+  mode: OcrMode,
   overlayBase64?: string
 ): OcrResult {
   const lines = (raw.lines ?? []).map((line) => ({
     text: line.text ?? "",
     glyphs: (line.glyphs ?? []).map(mapGlyph),
   }));
-  const glyphs = (raw.glyphs ?? []).map(mapGlyph);
+  const glyphs = flattenGlyphs(lines, (raw.glyphs ?? []).map(mapGlyph));
 
   return enrichOcrWithArabic({
     ok: true,
     text: raw.text ?? lines.map((l) => l.text).join("\n"),
     nLines: raw.n_lines ?? lines.length,
-    nGlyphs: raw.n_glyphs ?? glyphs.length,
+    nGlyphs: raw.n_glyphs ?? glyphs.filter((g) => !g.isSeparator).length,
     lines,
     glyphs,
     device: raw.device ?? "cpu",
-    mode: "paper",
+    mode,
     ...(overlayBase64 ? { overlayBase64 } : {}),
   });
 }
 
-function runPredictCli(imagePath: string, outDir: string): Promise<RawPaperResult> {
+function runPredictCli(
+  imagePath: string,
+  outDir: string,
+  mode: OcrMode
+): Promise<RawOcrPayload> {
+  const cliArgs = [
+    PREDICT_CLI,
+    mode === "stone" ? "--stone" : "--paper",
+    "--json",
+    "--out-dir",
+    outDir,
+    imagePath,
+  ];
+
   return new Promise((resolve, reject) => {
-    const child = spawn(
-      MODEL_PYTHON,
-      [PREDICT_CLI, "--paper", "--json", "--out-dir", outDir, imagePath],
-      {
-        cwd: MODEL_ROOT,
-        env: { ...process.env, PYTHONUNBUFFERED: "1" },
-      }
-    );
+    const child = spawn(MODEL_PYTHON, cliArgs, {
+      cwd: MODEL_ROOT,
+      env: { ...process.env, PYTHONUNBUFFERED: "1" },
+    });
 
     let stdout = "";
     let stderr = "";
@@ -144,7 +165,6 @@ function runPredictCli(imagePath: string, outDir: string): Promise<RawPaperResul
       }
 
       const trimmed = stdout.trim();
-      // CLI may print summary lines before JSON when not --json only; find last JSON object.
       const start = trimmed.indexOf("{");
       const end = trimmed.lastIndexOf("}");
       if (start < 0 || end < start) {
@@ -153,7 +173,7 @@ function runPredictCli(imagePath: string, outDir: string): Promise<RawPaperResul
       }
 
       try {
-        resolve(JSON.parse(trimmed.slice(start, end + 1)) as RawPaperResult);
+        resolve(JSON.parse(trimmed.slice(start, end + 1)) as RawOcrPayload);
       } catch (err) {
         reject(
           new Error(
@@ -165,16 +185,43 @@ function runPredictCli(imagePath: string, outDir: string): Promise<RawPaperResul
   });
 }
 
-export async function runPaperOcr(
+async function readOverlayBase64(
+  raw: RawOcrPayload,
+  outDir: string
+): Promise<string | undefined> {
+  const candidates = [
+    raw.overlay_path,
+    join(outDir, "overlay.png"),
+    join(outDir, "detect", "overlay.png"),
+  ].filter(Boolean) as string[];
+
+  for (const overlayPath of candidates) {
+    try {
+      const overlayBytes = await readFile(overlayPath);
+      if (overlayBytes.byteLength > 0) {
+        return overlayBytes.toString("base64");
+      }
+    } catch {
+      // try next candidate
+    }
+  }
+
+  return undefined;
+}
+
+export async function runOcr(
   imageBytes: Buffer,
-  filename: string
+  filename: string,
+  mode: OcrMode = DEFAULT_OCR_MODE
 ): Promise<OcrResult | OcrError> {
-  if (!isModelReady()) {
+  if (!isModelReady(mode)) {
     return {
       ok: false,
       error: "model_not_ready",
       detail:
-        "Run `pnpm setup:model` from the repo root (requires Python 3.11 + torch).",
+        mode === "stone"
+          ? "Stone OCR weights missing. Run `pnpm setup:model` from the repo root."
+          : "Run `pnpm setup:model` from the repo root (requires Python 3.11 + torch).",
     };
   }
 
@@ -192,20 +239,9 @@ export async function runPaperOcr(
 
   try {
     await writeFile(imagePath, imageBytes);
-    const raw = await runPredictCli(imagePath, outDir);
-
-    let overlayBase64: string | undefined;
-    const overlayPath = raw.overlay_path ?? join(outDir, "overlay.png");
-    try {
-      const overlayBytes = await readFile(overlayPath);
-      if (overlayBytes.byteLength > 0) {
-        overlayBase64 = overlayBytes.toString("base64");
-      }
-    } catch {
-      // overlay is optional
-    }
-
-    return normalizePaperResult(raw, overlayBase64);
+    const raw = await runPredictCli(imagePath, outDir, mode);
+    const overlayBase64 = await readOverlayBase64(raw, outDir);
+    return normalizeOcrResult(raw, mode, overlayBase64);
   } catch (err) {
     return {
       ok: false,
@@ -213,11 +249,18 @@ export async function runPaperOcr(
       detail: err instanceof Error ? err.message : String(err),
     };
   } finally {
-    // Best-effort cleanup of the uploaded image; keep overlay under tmp for debugging if needed.
     try {
       await unlink(imagePath);
     } catch {
       // ignore
     }
   }
+}
+
+/** @deprecated Use runOcr(..., "paper") */
+export async function runPaperOcr(
+  imageBytes: Buffer,
+  filename: string
+): Promise<OcrResult | OcrError> {
+  return runOcr(imageBytes, filename, "paper");
 }

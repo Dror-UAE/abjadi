@@ -1,216 +1,270 @@
 # Musnad OCR — Production Model Package
 
-Self-contained **full OCR pipeline** for Musnad (Ancient South Arabian) script,
-plus single-glyph classification. Includes the exact production weights and the
-inference code needed to reproduce the same predictions as the training project.
+Self-contained **production weights + inference code** for Musnad (Ancient South Arabian) script.
 
-**No server or API is included.** Integrate this package into your own backend.
+| What you get | Where |
+|--------------|--------|
+| Trained classifier (`musnad_final.pth`) | `model/` |
+| Prototype + shape banks (stone classify) | `model/` |
+| Stone detect weights (letter boxes) | `model/` |
+| Paper line OCR (detect → classify → RTL text + overlay) | `inference/paper_ocr.py` |
+| Stone inscription OCR (multi-line + overlay) | `inference/stone_ocr.py` (`MusnadStoneOCR`) |
+| Single-glyph classify (paper or stone crop) | `inference/predict.py` |
+| Web UI (paper + stone) | **`musnad_ocr/` project** |
+
+**No server or API is included.** Call the Python API from your own backend.
+
+## Quick start
+
+```bash
+cd musnad-ocr-model
+pip install -r requirements.txt
+```
+
+**Paper line:**
+
+```bash
+python -c "from inference.paper_ocr import MusnadOCR; r=MusnadOCR(force_cpu=True).recognize('path/to/line.png', out_dir='outputs/paper'); print(r['text'], r.get('overlay_path'))"
+```
+
+**Stone inscription (full photo — use this, not paper OCR):**
+
+```bash
+python -c "from inference.stone_ocr import MusnadStoneOCR; r=MusnadStoneOCR(force_cpu=True).recognize('path/to/stone.png', out_dir='outputs/stone'); print(r['n_lines'], r['text'], r.get('overlay_path'))"
+```
+
+**Single stone letter crop:**
+
+```bash
+python -c "from inference.predict import MusnadPredictor; p=MusnadPredictor(force_cpu=True); r=p.predict('path/to/crop.png', compare_preprocess=True, use_prototypes=True); print(r['name'], r['confidence'])"
+```
+
+> **Important:** Do **not** use `MusnadOCR` on stone photos — paper projection typically finds only one line on weathered stone. Use `MusnadStoneOCR` instead.
+
+Verify weights after copy or sync: open `VERSION.json` (version + SHA-256 per file).
 
 ## Package layout
 
 ```
 musnad-ocr-model/
 ├── model/
-│   ├── musnad_final.pth        # Production CNN checkpoint (39 classes, paper fine-tuned)
-│   ├── class_prototypes.pt     # Prototype gallery (stone / mixed domain; optional for paper)
-│   └── shape_bank.pt           # Stroke-shape similarity bank
+│   ├── musnad_final.pth
+│   ├── class_prototypes.pt
+│   ├── shape_bank.pt
+│   └── letter_boundary_v2.pth   # stone letter cuts (Segmentation v2)
 ├── config/
-│   ├── labels.json             # Label map + metadata (letters + numerals)
-│   ├── preprocessing.json      # Single-glyph preprocess / TTA / trust params
-│   ├── paper_ocr.json          # Full paper-line OCR pipeline config
-│   └── lookalikes.json         # Confusable letter pairs
+│   ├── labels.json
+│   ├── preprocessing.json
+│   ├── paper_ocr.json
+│   ├── stone_ocr.json
+│   └── lookalikes.json
 ├── inference/
-│   ├── predict.py              # Single-glyph classifier
-│   ├── preprocessing.py        # Image preprocessing (original + stone views)
-│   ├── layout.py               # RTL ordering + word-separator rules
-│   ├── paper_detect.py         # Paper glyph + bar detection (projection-based)
-│   └── paper_ocr.py            # Full pipeline: detect → classify → text
+│   ├── predict.py
+│   ├── preprocessing.py
+│   ├── layout.py
+│   ├── paper_detect.py          # includes draw_annotations()
+│   ├── paper_ocr.py
+│   ├── stone_ocr.py             # MusnadStoneOCR
+│   ├── letter_detector.py
+│   ├── letter_boundary_net.py
+│   ├── segment_v2.py
+│   ├── inscription_region.py
+│   ├── stone_glyph_segmentation.py
+│   ├── stone_enhancement.py
+│   ├── empty_segment_filter.py
+│   └── device.py
+├── VERSION.json
 ├── requirements.txt
 └── README.md
 ```
 
+## Trained models (`model/`)
+
+| File | Purpose |
+|------|---------|
+| `musnad_final.pth` | Main CNN — 39 classes. **Required for all modes.** |
+| `class_prototypes.pt` | Prototype gallery (stone classify re-ranking) |
+| `shape_bank.pt` | Stroke-shape similarity (with prototypes) |
+| `letter_boundary_v2.pth` | Stone letter cuts (boundary net, Segmentation v2) |
+
+- **Paper OCR:** `musnad_final.pth` only  
+- **Stone inscription OCR:** `musnad_final.pth` + `letter_boundary_v2.pth` + prototypes + shape bank  
+- **Stone single-glyph crop:** `musnad_final.pth` + prototypes + shape bank  
+
 ## Requirements
 
 - Python 3.10+
-- CPU or NVIDIA GPU (CUDA optional — runs on CPU when GPU is unavailable)
+- CPU or NVIDIA GPU (CUDA optional)
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 1) Full paper / line OCR (recommended)
-
-Use this for a manuscript line or page (multiple glyphs):
+## 1) Paper / manuscript line OCR
 
 ```python
 from inference.paper_ocr import MusnadOCR
 
-ocr = MusnadOCR(force_cpu=True)  # False = use CUDA when available
-result = ocr.recognize("path/to/paper_line.png", out_dir="out/run1")
+ocr = MusnadOCR(force_cpu=True)
+result = ocr.recognize("path/to/paper_line.png", out_dir="out/paper")
 
-print(result["text"])          # full page text (RTL logical order)
-print(result["overlay_path"])  # annotated image with boxes + labels + confidence
-print(result["n_lines"])
-print(result["n_glyphs"])
-for line in result["lines"]:
-    print(line["text"], line["words"])
+print(result["text"])
+print(result["overlay_path"])   # overlay.png — full image, boxes + labels
+print(result["n_lines"], result["n_glyphs"])
 ```
 
-The annotated visualization (`overlay.png`) is written by default (`save_overlay=True`):
+Annotated overlay (`save_overlay=True` by default):
 
-- Bounding box around every detected glyph  
-- Predicted Latin name (e.g. `NUN 98%`) or `|` for word separators  
-- Confidence percentage on each label  
-- Color coding: green = letter, orange = word bar, red = unknown  
+- Green box + Latin name + confidence (e.g. `NUN 98%`)
+- Orange = word separator `|`
+- Red = unknown / low trust
+- Musnad character drawn inside each box when the font is available
 
-Use `result["overlay_path"]` in the mobile app, or the in-memory `result["overlay"]` PIL image.
-`result["glyphs"]` also lists every box with `character`, `name`, `confidence`, and `box`.
+Also available: `result["overlay"]` (PIL), `result["glyphs"]` (all boxes with coordinates).
 
-One-shot helper:
+One-shot: `from inference.paper_ocr import recognize_paper`
 
-```python
-from inference.paper_ocr import recognize_paper
+### Paper pipeline
 
-result = recognize_paper("path/to/paper_line.png", force_cpu=True, out_dir="out/run1")
-```
-
-### What the full pipeline does
-
-1. **Detect** dark ink glyphs on light paper (projection segmentation + upscale for JPEG pages)  
-2. **Detect word bars** (colored `|`) or insert separators from **letter-gap** statistics  
-3. **Cluster lines** top → bottom  
-4. **Order each line** right → left (RTL **logical** storage order — UI `dir=rtl` displays correctly)  
-5. **Crop** each glyph with neighbor-clamped padding (no adjacent-letter contamination)  
-6. **Classify** each crop with paper-font fine-tuned `musnad_final.pth` (`letters_only=True`, no stone prototypes)  
-7. **Apply** BETH↔GIMEL shape fix for digital font lookalikes  
-8. **Split words** on vertical-bar / `NUM_1` separators  
-9. **Write annotated overlay** (`overlay.png`) with boxes, names, and confidence  
-
-Render `result["text"]` in the UI with `dir="rtl"`. Join words with spaces in display (not `|`).
-
-### Result shape (summary)
-
-```json
-{
-  "ok": true,
-  "mode": "paper_line",
-  "direction": "rtl",
-  "text_direction": "rtl",
-  "glyph_order": "rtl_logical",
-  "text": "…",
-  "n_lines": 1,
-  "n_glyphs": 12,
-  "lines": [
-    {
-      "line": 0,
-      "text": "…",
-      "words": ["…", "…"],
-      "glyphs": [{"character": "…", "name": "…", "box": [x0,y0,x1,y1], "...": "..."}]
-    }
-  ]
-}
-```
+1. Detect ink glyphs (projection + upscale)
+2. Word bars or gap-based separators
+3. Cluster lines top → bottom, order RTL
+4. Classify with paper fine-tuned CNN (`letters_only=True`, no stone prototypes)
+5. BETH↔GIMEL shape fix
+6. Write `overlay.png`
 
 ## 2) Single-glyph classification
 
-Use this only when you already have a cropped letter/number image:
+For an **already cropped** letter or numeral:
 
 ```python
 from inference.predict import MusnadPredictor
 
 predictor = MusnadPredictor(force_cpu=True)
-result = predictor.predict("path/to/glyph.png")
 
-print(result["character"])
-print(result["name"])
-print(result["confidence"])
+# Paper crop
+predictor.predict("crop.png", use_prototypes=False, letters_only=True, compare_preprocess=False)
+
+# Stone carving crop
+predictor.predict("crop.png", compare_preprocess=True, use_prototypes=True, letters_only=False)
 ```
 
-For paper crops, pass `use_prototypes=False` and `letters_only=True` to match line OCR:
+## 3) Stone inscription OCR
+
+Full photo → line banding → letter detect → classify → RTL text + **full-image overlay**.
 
 ```python
-result = predictor.predict(
-    "path/to/glyph.png",
-    use_prototypes=False,
-    letters_only=True,
-    compare_preprocess=False,
-)
+from inference.stone_ocr import MusnadStoneOCR
+
+ocr = MusnadStoneOCR(force_cpu=True)
+result = ocr.recognize("path/to/stone_inscription.jpg", out_dir="out/stone")
+
+print(result["n_lines"], result["n_glyphs"])
+print(result["text"])
+print(result["overlay_path"])   # full scanned image with all boxes + identify labels
+overlay_pil = result["overlay"]  # PIL image for your UI
 ```
 
-## Model details
+Options:
 
-| Item | Value |
-|------|-------|
-| Input (classifier) | `1 × 128 × 128` grayscale crop |
-| Classes | 39 (29 letters + 10 numeral forms) |
-| Architecture | MusnadCNN (Conv + glyph attention + GeM) |
-| Checkpoint | `model/musnad_final.pth` |
-| Full OCR domain | Clean paper / digital Musnad font (Segoe Historic) |
-| Paper fine-tune | Synthetic paper-font dataset, LR 1e-4, 10 epochs |
+- `save_overlay=True` (default) — writes `out/stone/overlay.png` and `result.json`
+- `save_overlay=False` — skip annotated image
 
-**Do not retrain or modify the checkpoint** unless you intentionally want a new model version.
+One-shot: `from inference.stone_ocr import recognize_stone_image`
 
-## Integration notes (Node / other backends)
+### Stone pipeline
 
-1. Copy this entire `musnad-ocr-model/` folder into your monorepo.  
-2. `pip install -r requirements.txt`  
-3. Call `MusnadOCR.recognize(...)` from your own Python entry script.  
-4. Use `force_cpu=True` on machines without NVIDIA GPU.  
+1. Line banding (`stone_glyph_segmentation`)
+2. Letter cuts per line (`segment_v2` + `letter_boundary_v2.pth`)
+3. Classify each frozen crop (stone preprocess + prototypes)
+4. RTL word split
+5. Draw annotations on **full original image** (`draw_annotations`)
 
-Keep these files together — removing any of them changes predictions:
+Browser UI: `python -m src.webapp` in `musnad_ocr/` (Stone mode).
 
-- `model/musnad_final.pth`
-- `config/labels.json`
-- `config/preprocessing.json`
-- `config/paper_ocr.json`
-- all of `inference/`
+## 4) Sync from training project
 
-Optional (stone / mixed domain single-glyph only):
-
-- `model/class_prototypes.pt`
-- `model/shape_bank.pt`
-
-## Scope
-
-| Mode | Included |
-|------|----------|
-| Single glyph classify | Yes |
-| Paper line / page OCR | Yes (detect → RTL → words) |
-| Stone inscription OCR | Not in this detector (classifier still supports stone crops) |
-| Server / API | No — build your own |
-
-## Version
-
-**v0.3.3** (2026-07-28) — stronger BETH vs TETH on dense pages.
-
-Re-sync after training / pipeline changes (from `musnad_ocr/`):
+After changes in `musnad_ocr/`:
 
 ```bash
+cd musnad_ocr
 python -m src.sync_package
 ```
 
+Copies weights, configs, and inference modules into this folder. Check `VERSION.json` after sync.
+
+## 5) Testing
+
+From `musnad-ocr-model/`:
+
+```bash
+# Paper
+python -c "
+from inference.paper_ocr import MusnadOCR
+r = MusnadOCR(force_cpu=True).recognize('../musnad_ocr/test_images/test-1.webp', out_dir='outputs/paper_test')
+print('lines', r['n_lines'], 'glyphs', r['n_glyphs'], 'overlay', r.get('overlay_path'))
+"
+
+# Stone (multi-line)
+python -c "
+from inference.stone_ocr import MusnadStoneOCR
+r = MusnadStoneOCR(force_cpu=True).recognize('../musnad_ocr/test_images/test-8.png', out_dir='outputs/stone_test')
+print('lines', r['n_lines'], 'glyphs', r['n_glyphs'], 'overlay', r.get('overlay_path'))
+"
+
+# Version + weight hashes
+python -c "import json; m=json.load(open('VERSION.json')); print(m['version'], list(m['files']))"
+```
+
+Expected on `test-8.png`: **2 lines**, annotated `overlay.png` at full image size.
+
+## Integration (other apps / backends)
+
+1. Copy this entire `musnad-ocr-model/` folder into your project.
+2. `pip install -r requirements.txt`
+3. **Paper:** `MusnadOCR().recognize(...)`
+4. **Stone photo:** `MusnadStoneOCR().recognize(...)` — not `MusnadOCR`
+5. Use `result["overlay_path"]` or `result["overlay"]` for the annotated preview.
+6. `force_cpu=True` when no NVIDIA GPU.
+
+Required together:
+
+- `model/musnad_final.pth`
+- `config/labels.json`, `config/preprocessing.json`
+- all of `inference/`
+
+Stone inscription also needs `letter_boundary_v2.pth` and prototype/shape files.
+
+## Scope
+
+| Mode | Package |
+|------|---------|
+| Paper line OCR + overlay | Yes (`MusnadOCR`) |
+| Stone inscription OCR + overlay | Yes (`MusnadStoneOCR`) |
+| Single-glyph classify | Yes (`MusnadPredictor`) |
+| Web UI | No — use `musnad_ocr/` |
+| HTTP API | No — build your own |
+
+## Version
+
+**v0.4.2** (2026-08-10)
+
 ### Changelog
 
-**v0.3.3**
-- Fix `𐩨` misread as `𐩷`: empty-interior / weak-stem BETH wins even when a false bottom bar appears on crowded scans
-- TETH only when center vertical stem is strong and interior is filled
+**v0.4.2**
+- Stone OCR writes **full-image `overlay.png`** with detect + identify labels (same style as paper)
+- `result["overlay"]`, `result["glyphs"]`, `save_overlay` flag on `MusnadStoneOCR`
+- `draw_annotations` synced into `paper_detect.py` (shared by paper + stone)
 
-**v0.3.2**
-- Paper geometry overrides for `𐩥`↔`𐩲` (WAW/AYN stem-in-circle)
-- Paper geometry overrides for `𐩷`↔`𐩳`↔`𐩨` (TETH/DHADHE/BETH bar layout)
-- Extra hard lookalike pairs in `lookalikes.json`
+**v0.4.1**
+- Full stone pipeline packaged: `MusnadStoneOCR` (line banding, letter detect, stone classify)
+- Sync detector modules + weights; **do not use `MusnadOCR` on stone**
 
-**v0.3.1**
-- Full package sync: weights, labels, lookalikes, layout, paper_detect, paper_ocr config
-- Added `VERSION.json` with SHA-256 hashes of model files
-- Lookalikes config includes shape groups + hard pairs from `confusable.py`
+**v0.4.0**
+- Stone preprocess hardening (zig-zag letters); bundle stone detect weights
 
-**v0.3**
-- Fine-tuned `musnad_final.pth` on Segoe Historic / digital paper font
-- Projection detection, gap word breaks, neighbor-clamped crops, RTL logical order
-- BETH↔GIMEL shape fix; prototypes disabled on paper
+**v0.3.x**
+- Paper fine-tune, lookalike fixes, BETH/TETH geometry overrides, `VERSION.json` hashes
 
 **v0.2**
-- Initial packaged paper line OCR pipeline
-
-Exported from production checkpoint `musnad_final.pth` with the production paper OCR pipeline.
+- Initial packaged paper line OCR

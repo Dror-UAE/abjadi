@@ -156,18 +156,23 @@ type OcrPollResponse = OcrResponse & {
   jobId?: string;
 };
 
-export async function uploadOcr(imageUri: string, signal?: AbortSignal): Promise<OcrResponse> {
+export async function uploadOcr(
+  imageUri: string,
+  signal?: AbortSignal,
+  mode: 'paper' | 'stone' = 'stone'
+): Promise<OcrResponse> {
   const payload = await imageUriToBase64Payload(imageUri);
 
   let startResponse: Response;
   try {
-    startResponse = await fetch(`${getApiBaseUrl()}/ocr?async=1`, {
+    startResponse = await fetch(`${getApiBaseUrl()}/ocr?async=1&mode=${mode}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-abjadi-ocr-async': '1',
+        'x-abjadi-ocr-mode': mode,
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, mode }),
       signal,
     });
   } catch (err) {
