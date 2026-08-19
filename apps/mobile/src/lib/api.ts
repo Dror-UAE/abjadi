@@ -51,29 +51,22 @@ async function imageUriToBase64Payload(imageUri: string): Promise<{
   filename: string;
   mimeType: string;
 }> {
-  // Use ImageManipulator with base64 output — avoids fetch() on local file URIs,
-  // which fails on physical devices for certain temp paths.
+  // Reduce upload size for remote APIs (Fly) to avoid request failures on large camera images.
+  let uploadUri = imageUri;
   try {
     const optimized = await ImageManipulator.manipulateAsync(
       imageUri,
       [{ resize: { width: 1280 } }],
-      { compress: 0.65, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      { compress: 0.65, format: ImageManipulator.SaveFormat.JPEG }
     );
-    if (optimized.base64 && optimized.base64.length > 0) {
-      return {
-        imageBase64: optimized.base64,
-        filename: 'scan.jpg',
-        mimeType: 'image/jpeg',
-      };
-    }
+    uploadUri = optimized.uri;
   } catch {
-    // Fall through to fetch fallback below.
+    // Fall back to original URI if manipulation fails.
   }
 
-  // Fallback: fetch the URI directly (works on simulator and for http/https URIs).
   let response: Response;
   try {
-    response = await fetch(imageUri);
+    response = await fetch(uploadUri);
   } catch {
     throw new ApiError('تعذر تجهيز الصورة للرفع. جرّب إعادة التصوير أو اختيار صورة أصغر.');
   }
