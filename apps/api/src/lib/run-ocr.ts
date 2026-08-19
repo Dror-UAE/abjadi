@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, mkdir, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import sharp from "sharp";
 
 import {
   DEFAULT_OCR_MODE,
@@ -160,16 +161,17 @@ export async function runOcr(
   const workDir = join(tmpdir(), "abjadi-ocr", id);
   await mkdir(workDir, { recursive: true });
 
-  const ext = filename.toLowerCase().endsWith(".png")
-    ? ".png"
-    : filename.toLowerCase().endsWith(".webp")
-      ? ".webp"
-      : ".jpg";
-  const imagePath = join(workDir, `input${ext}`);
+  // Always write as PNG — OpenCV on the worker reads PNG reliably across all
+  // camera/gallery sources. JPEG from mobile can have sub-encodings that
+  // cv2.imread silently fails on, returning None and raising FileNotFoundError.
+  const imagePath = join(workDir, "input.png");
   const outDir = join(workDir, "out");
 
   try {
-    await writeFile(imagePath, imageBytes);
+    // Convert to PNG so OpenCV (cv2.imread) reads it reliably regardless of
+    // source encoding (mobile JPEG sub-formats, WEBP, etc.)
+    const pngBytes = await sharp(imageBytes).png().toBuffer();
+    await writeFile(imagePath, pngBytes);
 
     const response = await runOcrWorker(imagePath, outDir, mode);
 

@@ -16,12 +16,14 @@
   "dependencies": {
     "@hono/node-server": "^1.14.1",
     "@supabase/supabase-js": "^2.110.9",
-    "hono": "^4.7.8"
+    "hono": "^4.7.8",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@abjadi/eslint-config": "workspace:*",
     "@abjadi/typescript-config": "workspace:*",
     "@types/node": "^22.15.0",
+    "@types/sharp": "^0.32.0",
     "eslint": "^9.25.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.3"
