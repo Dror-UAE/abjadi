@@ -16,7 +16,7 @@ export function DemoVideo({ title, poster }: DemoVideoProps) {
         poster={poster}
         title={title}
       >
-        <source src="/demo-video.mp4" type="video/mp4" />
+        <source src="/demo-video-1.mp4" type="video/mp4" />
       </video>
     </div>
   );
