@@ -155,7 +155,11 @@ export async function createOcrJob(
     updatedAt: now,
   };
 
-  await saveJob(job);
+  // Store in-memory immediately so the 202 response goes out without waiting
+  // for a Supabase round-trip (which can block for seconds and trigger Fly's
+  // 60s HTTP timeout before the client even gets the jobId).
+  jobs.set(id, job);
+  void saveJob(job); // fire-and-forget to Supabase
   void runJob(id, imageBytes, filename, mode);
   return job;
 }

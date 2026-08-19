@@ -15,6 +15,7 @@ primary_region = "sin"
   auto_start_machines = true
   min_machines_running = 1
   processes = ["app"]
+  idle_timeout = 300
 
   [http_service.concurrency]
     type = "requests"
