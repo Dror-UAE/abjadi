@@ -5,6 +5,7 @@ import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  Clipboard,
   Image,
   Platform,
   Pressable,
@@ -148,6 +149,11 @@ export function ResultScreen() {
     const hasServerScan = Boolean(scan.serverScanId || scan.result.scanId);
     return !alreadyDocumented && hasServerScan;
   }, [scan, isMine]);
+
+  const copyText = (text: string, label: string) => {
+    Clipboard.setString(text);
+    Alert.alert('تم النسخ', `تم نسخ ${label} إلى الحافظة.`);
+  };
 
   const goHome = () => {
     router.replace('/home');
@@ -318,9 +324,24 @@ export function ResultScreen() {
           entering={FadeInDown.delay(120).duration(480)}
           style={styles.section}
         >
-          <ArabicText weight="bold" style={[styles.sectionTitle, { color: flow.text }]}>
-            النص المستخرج
-          </ArabicText>
+          <View style={styles.sectionHeader}>
+            <Pressable
+              onPress={() => copyText(detectedLine, 'النص المستخرج')}
+              style={({ pressed }) => [styles.copyBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="نسخ النص المستخرج"
+            >
+              <SymbolView
+                name={{ ios: 'doc.on.doc', android: 'content_copy', web: 'content_copy' }}
+                size={13}
+                tintColor={Palette.ochreClay}
+              />
+              <ArabicText weight="medium" style={styles.copyBtnLabel}>نسخ</ArabicText>
+            </Pressable>
+            <ArabicText weight="bold" style={[styles.sectionTitle, { color: flow.text }]}>
+              النص المستخرج
+            </ArabicText>
+          </View>
 
           <View
             style={[
@@ -339,9 +360,24 @@ export function ResultScreen() {
           entering={FadeInDown.delay(220).duration(480)}
           style={styles.section}
         >
-          <ArabicText weight="bold" style={[styles.sectionTitle, { color: flow.text }]}>
-            الترجمة العربية
-          </ArabicText>
+          <View style={styles.sectionHeader}>
+            <Pressable
+              onPress={() => copyText(arabicTranslation || '—', 'الترجمة العربية')}
+              style={({ pressed }) => [styles.copyBtn, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="نسخ الترجمة العربية"
+            >
+              <SymbolView
+                name={{ ios: 'doc.on.doc', android: 'content_copy', web: 'content_copy' }}
+                size={13}
+                tintColor={Palette.ochreClay}
+              />
+              <ArabicText weight="medium" style={styles.copyBtnLabel}>نسخ</ArabicText>
+            </Pressable>
+            <ArabicText weight="bold" style={[styles.sectionTitle, { color: flow.text }]}>
+              الترجمة العربية
+            </ArabicText>
+          </View>
 
           <View
             style={[
@@ -563,9 +599,30 @@ const styles = StyleSheet.create({
     gap: 6,
   },
 
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+
   sectionTitle: {
     fontSize: 14,
     textAlign: 'right',
+  },
+
+  copyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    backgroundColor: 'rgba(193, 138, 59, 0.1)',
+  },
+
+  copyBtnLabel: {
+    fontSize: 12,
+    color: Palette.ochreClay,
   },
 
   scriptBlock: {
