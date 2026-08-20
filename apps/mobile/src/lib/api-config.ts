@@ -25,9 +25,13 @@ function normalizeApiUrl(raw: string): string {
 }
 
 function preferredDefault(): string {
-  if (isSimulator()) return SIMULATOR_API_URL;
   const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
-  return normalizeApiUrl(fromEnv && fromEnv.length > 0 ? fromEnv : DEFAULT_API_URL);
+  if (fromEnv && fromEnv.length > 0) {
+    return normalizeApiUrl(fromEnv);
+  }
+  // No env set — local API on this Mac.
+  if (isSimulator()) return SIMULATOR_API_URL;
+  return DEFAULT_API_URL;
 }
 
 function hostFromUrl(url: string): string | null {
@@ -42,6 +46,22 @@ function hostFromUrl(url: string): string | null {
 function migrateStoredUrl(stored: string): string {
   const host = hostFromUrl(stored);
   if (!host) return preferredDefault();
+
+  const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
+  const envUrl = fromEnv && fromEnv.length > 0 ? normalizeApiUrl(fromEnv) : null;
+  const envHost = envUrl ? hostFromUrl(envUrl) : null;
+
+  // If .env points at a remote API (e.g. Fly) but AsyncStorage still has a
+  // leftover local/simulator URL, prefer the env — that was the old bug.
+  if (envUrl && envHost && envHost !== '127.0.0.1' && envHost !== 'localhost') {
+    const storedIsLocal =
+      host === '127.0.0.1' ||
+      host === 'localhost' ||
+      /^192\.168\./.test(host) ||
+      /^10\./.test(host) ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(host);
+    if (storedIsLocal) return envUrl;
+  }
 
   if (isSimulator()) {
     const isLan =
@@ -115,6 +135,10 @@ export function isDevSimulator(): boolean {
 }
 
 export function apiUrlHint(): string {
+  const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim();
+  if (fromEnv) {
+    return `من .env: ${fromEnv}`;
+  }
   if (isSimulator()) {
     return 'المحاكي: استخدم http://127.0.0.1:3500 — شغّل bun dev في apps/api';
   }

@@ -290,7 +290,7 @@ export function AnalyzingScreen() {
       });
     }, 120);
 
-    const controller = new AbortController();
+    let cancelled = false;
 
     async function run() {
       try {
@@ -300,8 +300,10 @@ export function AnalyzingScreen() {
           );
         }
 
-        const response = await uploadOcr(imageUri, controller.signal);
-        if (controller.signal.aborted || finishedRef.current) return;
+        // Do not pass AbortSignal for the upload — aborting mid-upload causes
+        // ECONNRESET on Fly and the app loses the jobId even though OCR started.
+        const response = await uploadOcr(imageUri);
+        if (cancelled || finishedRef.current) return;
 
         if (!response.ok) {
           throw new ApiError(response.detail || response.error);
@@ -317,12 +319,15 @@ export function AnalyzingScreen() {
           publicId: response.publicId,
         });
 
+        if (cancelled) return;
+
         finishedRef.current = true;
         setStepIndex(4);
         setPercent(100);
         progress.value = withTiming(1, { duration: 350 });
 
         setTimeout(() => {
+          if (cancelled) return;
           router.replace({
             pathname: '/result',
             params: {
@@ -332,7 +337,7 @@ export function AnalyzingScreen() {
           });
         }, 450);
       } catch (err) {
-        if (controller.signal.aborted || finishedRef.current) return;
+        if (cancelled || finishedRef.current) return;
         if (err instanceof Error && err.name === 'AbortError') return;
         const message =
           err instanceof ApiError
@@ -354,7 +359,7 @@ export function AnalyzingScreen() {
     void run();
 
     return () => {
-      controller.abort();
+      cancelled = true;
       stepTimers.forEach(clearTimeout);
       clearInterval(tick);
     };

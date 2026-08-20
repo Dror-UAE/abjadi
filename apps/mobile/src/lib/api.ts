@@ -46,27 +46,56 @@ export class ApiError extends Error {
 
 export { getApiBaseUrl, setApiBaseUrl, loadApiConfig } from './api-config';
 
+async function prepareUploadImage(imageUri: string): Promise<{
+  uri: string;
+  filename: string;
+  mimeType: string;
+  imageBase64?: string;
+}> {
+  // Resize for remote APIs. Prefer keeping a local file URI for multipart upload
+  // (smaller + more reliable than JSON base64 on mobile networks).
+  try {
+    const optimized = await ImageManipulator.manipulateAsync(
+      imageUri,
+      [{ resize: { width: 1024 } }],
+      {
+        compress: 0.55,
+        format: ImageManipulator.SaveFormat.JPEG,
+        base64: true,
+      }
+    );
+    return {
+      uri: optimized.uri,
+      filename: 'scan.jpg',
+      mimeType: 'image/jpeg',
+      imageBase64: optimized.base64,
+    };
+  } catch {
+    return {
+      uri: imageUri,
+      filename: guessName(imageUri),
+      mimeType: guessMime(imageUri),
+    };
+  }
+}
+
 async function imageUriToBase64Payload(imageUri: string): Promise<{
   imageBase64: string;
   filename: string;
   mimeType: string;
 }> {
-  // Reduce upload size for remote APIs (Fly) to avoid request failures on large camera images.
-  let uploadUri = imageUri;
-  try {
-    const optimized = await ImageManipulator.manipulateAsync(
-      imageUri,
-      [{ resize: { width: 1280 } }],
-      { compress: 0.65, format: ImageManipulator.SaveFormat.JPEG }
-    );
-    uploadUri = optimized.uri;
-  } catch {
-    // Fall back to original URI if manipulation fails.
+  const prepared = await prepareUploadImage(imageUri);
+  if (prepared.imageBase64) {
+    return {
+      imageBase64: prepared.imageBase64,
+      filename: prepared.filename,
+      mimeType: prepared.mimeType,
+    };
   }
 
   let response: Response;
   try {
-    response = await fetch(uploadUri);
+    response = await fetch(prepared.uri);
   } catch {
     throw new ApiError('تعذر تجهيز الصورة للرفع. جرّب إعادة التصوير أو اختيار صورة أصغر.');
   }
@@ -81,8 +110,8 @@ async function imageUriToBase64Payload(imageUri: string): Promise<{
 
   return {
     imageBase64: arrayBufferToBase64(buffer),
-    filename: guessName(imageUri),
-    mimeType: response.headers.get('content-type') || guessMime(imageUri),
+    filename: prepared.filename,
+    mimeType: response.headers.get('content-type') || prepared.mimeType,
   };
 }
 
@@ -161,25 +190,54 @@ export async function uploadOcr(
   signal?: AbortSignal,
   mode: 'paper' | 'stone' = 'stone'
 ): Promise<OcrResponse> {
-  const payload = await imageUriToBase64Payload(imageUri);
+  const prepared = await prepareUploadImage(imageUri);
+
+  // Multipart file upload — avoids huge JSON base64 bodies that get reset on Fly.
+  const form = new FormData();
+  form.append('mode', mode);
+  form.append('image', {
+    uri: prepared.uri,
+    name: prepared.filename,
+    type: prepared.mimeType,
+  } as unknown as Blob);
 
   let startResponse: Response;
   try {
     startResponse = await fetch(`${getApiBaseUrl()}/ocr?async=1&mode=${mode}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         'x-abjadi-ocr-async': '1',
         'x-abjadi-ocr-mode': mode,
       },
-      body: JSON.stringify({ ...payload, mode }),
+      body: form,
       signal,
     });
   } catch (err) {
     if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) {
       throw err;
     }
-    throw new ApiError('فشل رفع الصورة إلى الخادم. تحقق من الإنترنت أو جرّب صورة أصغر.');
+    // Fallback: JSON base64 if multipart fails on this platform.
+    try {
+      const payload = await imageUriToBase64Payload(imageUri);
+      startResponse = await fetch(`${getApiBaseUrl()}/ocr?async=1&mode=${mode}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-abjadi-ocr-async': '1',
+          'x-abjadi-ocr-mode': mode,
+        },
+        body: JSON.stringify({ ...payload, mode }),
+        signal,
+      });
+    } catch (fallbackErr) {
+      if (
+        signal?.aborted ||
+        (fallbackErr instanceof Error && fallbackErr.name === 'AbortError')
+      ) {
+        throw fallbackErr;
+      }
+      throw new ApiError('فشل رفع الصورة إلى الخادم. تحقق من الإنترنت أو جرّب صورة أصغر.');
+    }
   }
 
   let startData: OcrStartResponse | null = null;
