@@ -30,6 +30,9 @@ COPY apps/api apps/api
 COPY packages/typescript-config packages/typescript-config
 COPY models/musnad-ocr-model models/musnad-ocr-model
 
+# Drop any host .venv that slipped into the build context (breaks python3 -m venv).
+RUN rm -rf /app/models/musnad-ocr-model/.venv
+
 # Create model venv in the exact path expected by model-paths.ts
 RUN python3 -m venv /app/models/musnad-ocr-model/.venv \
   && /app/models/musnad-ocr-model/.venv/bin/pip install --no-cache-dir -r /app/models/musnad-ocr-model/requirements.txt
