@@ -143,6 +143,9 @@ async function runJob(
       persisted: false,
     };
     job.status = "succeeded";
+    console.log(
+      `[ocr-job] succeeded ${jobId} textLen=${result.text?.length ?? 0} glyphs=${result.nGlyphs}`
+    );
     void saveJob(job);
 
     // Persist scan + images in the background; update scanId when done.

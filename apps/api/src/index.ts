@@ -201,10 +201,14 @@ app.get("/ocr/jobs/:id", async (c) => {
   }
 
   if (job.status === "succeeded" && job.result) {
+    // Never send multi‑MB overlayBase64 on every poll — it stalls mobile JSON
+    // parse and looks like "scanning forever". Overlay can load from storage later.
+    const { overlayBase64: _overlay, ...resultWithoutOverlay } = job.result;
     return c.json({
-      ...job.result,
+      ...resultWithoutOverlay,
       jobId: job.id,
       status: job.status,
+      hasOverlay: Boolean(_overlay),
     });
   }
 

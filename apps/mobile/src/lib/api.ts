@@ -290,8 +290,8 @@ export async function uploadOcr(
 
     if (!pollData) continue;
 
-    if (pollData.ok && pollData.status === 'succeeded') {
-      return pollData;
+    if (pollData.status === 'succeeded' && (pollData.ok === true || 'text' in pollData)) {
+      return pollData as OcrResponse;
     }
 
     if (
@@ -301,7 +301,7 @@ export async function uploadOcr(
       continue;
     }
 
-    if (!pollData.ok) {
+    if (pollData.ok === false) {
       throw new ApiError(pollData.detail || pollData.error || 'فشل التحليل', pollResponse.status);
     }
   }

@@ -112,7 +112,15 @@ function startWorker(): void {
 
   proc = spawn(MODEL_PYTHON, [WORKER_SCRIPT], {
     cwd: MODEL_ROOT,
-    env: { ...process.env, PYTHONUNBUFFERED: "1" },
+    env: {
+      ...process.env,
+      PYTHONUNBUFFERED: "1",
+      // Leave CPU headroom for Node so mobile polling stays responsive.
+      OMP_NUM_THREADS: "1",
+      MKL_NUM_THREADS: "1",
+      OPENBLAS_NUM_THREADS: "1",
+      NUMEXPR_NUM_THREADS: "1",
+    },
     stdio: ["pipe", "pipe", "pipe"],
   });
 

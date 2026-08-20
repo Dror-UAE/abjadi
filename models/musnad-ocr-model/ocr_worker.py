@@ -41,6 +41,15 @@ import torch  # noqa: E402  (must come after path fix)
 from inference.paper_ocr import MusnadOCR  # noqa: E402
 from inference.stone_ocr import MusnadStoneOCR  # noqa: E402
 
+# Keep inference on 1 thread so the Node.js event loop can still answer
+# mobile poll requests while OCR runs. Without this, torch saturates both
+# shared CPUs and the phone waits forever on /ocr/jobs/:id.
+torch.set_num_threads(1)
+torch.set_num_interop_threads(1)
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+
 
 def _json_safe(value: Any) -> Any:
     """Recursively strip non-serialisable values (PIL Images, Paths, etc.)."""
@@ -140,6 +149,7 @@ for raw_line in sys.stdin:
             )
 
         _emit({"id": req_id, "ok": True, **_json_safe(result)})
+        _log(f"done id={req_id} mode={mode}")
 
     except Exception as exc:  # noqa: BLE001
         _log(f"error id={req_id}: {exc}\n{traceback.format_exc()}")
