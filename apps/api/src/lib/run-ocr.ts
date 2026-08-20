@@ -133,7 +133,13 @@ async function readOverlayBase64(
   for (const p of candidates) {
     try {
       const bytes = await readFile(p);
-      if (bytes.byteLength > 0) return bytes.toString("base64");
+      if (bytes.byteLength === 0) continue;
+      // Compress for mobile transfer + keep Fly memory under control (raw PNG base64 OOMs the 2GB VM).
+      const jpeg = await sharp(bytes)
+        .resize({ width: 1280, withoutEnlargement: true })
+        .jpeg({ quality: 72 })
+        .toBuffer();
+      return jpeg.toString("base64");
     } catch {
       // try next
     }

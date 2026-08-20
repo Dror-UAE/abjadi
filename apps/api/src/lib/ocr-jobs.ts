@@ -31,6 +31,8 @@ export type OcrJobRecord = {
 };
 
 const jobs = new Map<string, OcrJobRecord>();
+/** Overlays kept out of job JSON / poll payloads to avoid OOM after a few scans. */
+const overlays = new Map<string, string>();
 const MAX_JOBS = 100;
 const JOB_TTL_MS = 30 * 60 * 1000;
 const JOB_BUCKET = "scan-images";
@@ -39,12 +41,16 @@ const JOB_PREFIX = "_ocr-jobs";
 function pruneJobs(): void {
   const cutoff = Date.now() - JOB_TTL_MS;
   for (const [id, job] of jobs) {
-    if (job.updatedAt < cutoff) jobs.delete(id);
+    if (job.updatedAt < cutoff) {
+      jobs.delete(id);
+      overlays.delete(id);
+    }
   }
   while (jobs.size > MAX_JOBS) {
     const oldest = [...jobs.entries()].sort((a, b) => a[1].createdAt - b[1].createdAt)[0];
     if (!oldest) break;
     jobs.delete(oldest[0]);
+    overlays.delete(oldest[0]);
   }
 }
 
@@ -135,16 +141,19 @@ async function runJob(
       return;
     }
 
-    // Mark succeeded IMMEDIATELY so mobile polls get the OCR result without
-    // waiting for Supabase image/overlay uploads (which can take 30–90s and
-    // made every other user think the server was hung).
+    // Keep overlay out of the job record (poll JSON + in-memory bloat kills the VM
+    // after ~2 scans). Serve it from a dedicated endpoint instead.
+    if (result.overlayBase64) {
+      overlays.set(jobId, result.overlayBase64);
+    }
+    const { overlayBase64: _drop, ...resultWithoutOverlay } = result;
     job.result = {
-      ...result,
+      ...resultWithoutOverlay,
       persisted: false,
     };
     job.status = "succeeded";
     console.log(
-      `[ocr-job] succeeded ${jobId} textLen=${result.text?.length ?? 0} glyphs=${result.nGlyphs}`
+      `[ocr-job] succeeded ${jobId} textLen=${result.text?.length ?? 0} glyphs=${result.nGlyphs} overlay=${overlays.has(jobId)}`
     );
     void saveJob(job);
 
@@ -154,8 +163,11 @@ async function runJob(
         const finalized = await finalizeOcr(imageBytes, filename, result);
         const current = jobs.get(jobId);
         if (!current || current.status !== "succeeded") return;
-        current.result = finalized;
+        const { overlayBase64: _o, ...withoutOverlay } = finalized;
+        current.result = withoutOverlay;
         void saveJob(current);
+        // Overlay is in Supabase storage now — free RAM.
+        overlays.delete(jobId);
       } catch (err) {
         console.error("[ocr-job] background persist failed:", err);
       }
@@ -229,6 +241,15 @@ export async function getOcrJob(id: string): Promise<OcrJobRecord | undefined> {
     console.error(`[ocr-job] invalid persisted job ${id}:`, err);
     return undefined;
   }
+}
+
+/** Overlay for a succeeded job (JPEG base64). Cleared after persist to free RAM. */
+export function getOcrJobOverlay(id: string): string | undefined {
+  return overlays.get(id);
+}
+
+export function hasOcrJobOverlay(id: string): boolean {
+  return overlays.has(id);
 }
 
 /** Start the persistent Python worker so the first real request pays no cold-start cost. */

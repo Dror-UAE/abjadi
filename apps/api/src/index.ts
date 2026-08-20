@@ -6,7 +6,7 @@ import { cors } from "hono/cors";
 
 import { getMobileConfig } from "./lib/mobile-config.js";
 import { getModelInfo, parseOcrMode, type OcrMode } from "./lib/model-paths.js";
-import { createOcrJob, getOcrJob, runOcrAndPersist, warmOcrModel } from "./lib/ocr-jobs.js";
+import { createOcrJob, getOcrJob, getOcrJobOverlay, hasOcrJobOverlay, runOcrAndPersist, warmOcrModel } from "./lib/ocr-jobs.js";
 import { persistDocumentation } from "./lib/persist.js";
 import { getScanById, listScans, deleteScanById } from "./lib/scans.js";
 import { isSupabaseConfigured } from "./lib/supabase.js";
@@ -201,14 +201,13 @@ app.get("/ocr/jobs/:id", async (c) => {
   }
 
   if (job.status === "succeeded" && job.result) {
-    // Never send multi‑MB overlayBase64 on every poll — it stalls mobile JSON
-    // parse and looks like "scanning forever". Overlay can load from storage later.
+    // Lightweight poll payload — overlay is fetched separately.
     const { overlayBase64: _overlay, ...resultWithoutOverlay } = job.result;
     return c.json({
       ...resultWithoutOverlay,
       jobId: job.id,
       status: job.status,
-      hasOverlay: Boolean(_overlay),
+      hasOverlay: hasOcrJobOverlay(job.id) || Boolean(_overlay),
     });
   }
 
@@ -230,6 +229,25 @@ app.get("/ocr/jobs/:id", async (c) => {
     jobId: job.id,
     status: job.status,
     pending: true,
+  });
+});
+
+app.get("/ocr/jobs/:id/overlay", async (c) => {
+  const id = c.req.param("id")?.trim();
+  if (!id) {
+    return c.json({ ok: false, error: "missing_job_id" }, 400);
+  }
+
+  const overlayBase64 = getOcrJobOverlay(id);
+  if (!overlayBase64) {
+    return c.json({ ok: false, error: "overlay_not_found" }, 404);
+  }
+
+  return c.json({
+    ok: true,
+    jobId: id,
+    mimeType: "image/jpeg",
+    overlayBase64,
   });
 });
 

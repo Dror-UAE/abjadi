@@ -21,6 +21,7 @@ const WORKER_SCRIPT = join(MODEL_ROOT, "ocr_worker.py");
 const READY_TIMEOUT_MS = 120_000; // time allowed for cold boot + weight loading
 const REQUEST_TIMEOUT_MS = 120_000; // hard kill if a single inference hangs
 const QUEUE_TIMEOUT_MS = 90_000; // fail fast if another scan is already running
+const RECYCLE_AFTER_JOBS = 3; // restart Python worker to reclaim RAM on 2GB VM
 
 // ---------------------------------------------------------------------------
 // Types
@@ -59,6 +60,7 @@ type QueueWaiter = {
 let proc: ChildProcessWithoutNullStreams | null = null;
 let workerReady = false;
 let restartScheduled = false;
+let jobsSinceRecycle = 0;
 const pending = new Map<string, PendingRequest>();
 
 // Concurrency lock — only one OCR job runs at a time.
@@ -276,7 +278,20 @@ export async function runOcrWorker(
   await acquireLock();
 
   try {
-    return await sendRequest(imagePath, outDir, mode);
+    const response = await sendRequest(imagePath, outDir, mode);
+    jobsSinceRecycle += 1;
+    if (jobsSinceRecycle >= RECYCLE_AFTER_JOBS && proc) {
+      console.log(
+        `[ocr-worker] recycling Python worker after ${jobsSinceRecycle} jobs to free memory`
+      );
+      jobsSinceRecycle = 0;
+      const old = proc;
+      proc = null;
+      workerReady = false;
+      old.kill("SIGTERM");
+      // Next request will startWorker() fresh.
+    }
+    return response;
   } finally {
     releaseLock();
   }

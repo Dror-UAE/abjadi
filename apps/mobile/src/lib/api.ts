@@ -179,11 +179,47 @@ type OcrStartResponse = {
   pending?: boolean;
 } & Partial<OcrSuccess>;
 
-type OcrPollResponse = OcrResponse & {
+type OcrPollResponse = {
+  ok?: boolean;
   status?: string;
   pending?: boolean;
   jobId?: string;
+  hasOverlay?: boolean;
+  overlayBase64?: string;
+  error?: string;
+  detail?: string;
+  text?: string;
+  arabicText?: string;
+  arabicLines?: string[];
+  nLines?: number;
+  nGlyphs?: number;
+  lines?: OcrSuccess['lines'];
+  glyphs?: OcrSuccess['glyphs'];
+  device?: string;
+  mode?: OcrSuccess['mode'];
+  scanId?: string;
+  publicId?: string;
+  persisted?: boolean;
 };
+
+function toOcrSuccess(poll: OcrPollResponse, overlayBase64?: string): OcrSuccess {
+  return {
+    ok: true,
+    text: poll.text ?? '',
+    arabicText: poll.arabicText,
+    arabicLines: poll.arabicLines,
+    nLines: poll.nLines ?? poll.lines?.length ?? 0,
+    nGlyphs: poll.nGlyphs ?? poll.glyphs?.length ?? 0,
+    lines: poll.lines ?? [],
+    glyphs: poll.glyphs ?? [],
+    device: poll.device ?? 'cpu',
+    mode: poll.mode ?? 'stone',
+    overlayBase64: overlayBase64 ?? poll.overlayBase64,
+    scanId: poll.scanId,
+    publicId: poll.publicId,
+    persisted: poll.persisted,
+  };
+}
 
 export async function uploadOcr(
   imageUri: string,
@@ -290,8 +326,29 @@ export async function uploadOcr(
 
     if (!pollData) continue;
 
-    if (pollData.status === 'succeeded' && (pollData.ok === true || 'text' in pollData)) {
-      return pollData as OcrResponse;
+    if (pollData.status === 'succeeded' && (pollData.ok === true || typeof pollData.text === 'string')) {
+      // Overlay is served separately so poll stays small/fast.
+      if (pollData.hasOverlay && !pollData.overlayBase64) {
+        try {
+          const overlayRes = await fetch(
+            `${getApiBaseUrl()}/ocr/jobs/${encodeURIComponent(jobId)}/overlay`,
+            { signal }
+          );
+          if (overlayRes.ok) {
+            const overlayJson = (await overlayRes.json()) as {
+              ok?: boolean;
+              overlayBase64?: string;
+            };
+            if (overlayJson.overlayBase64) {
+              return toOcrSuccess(pollData, overlayJson.overlayBase64);
+            }
+          }
+        } catch {
+          // Text-only result is still usable without overlay.
+        }
+      }
+
+      return toOcrSuccess(pollData);
     }
 
     if (

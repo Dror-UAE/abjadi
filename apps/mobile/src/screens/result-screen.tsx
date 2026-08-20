@@ -108,8 +108,11 @@ export function ResultScreen() {
   }, [uri, scan]);
 
   const overlaySource = useMemo((): ImageSourcePropType | null => {
-    const b64 = scan?.result.overlayBase64;
-    if (b64) return { uri: `data:image/png;base64,${b64}` };
+    if (scan?.result.overlayBase64) {
+      const b64 = scan.result.overlayBase64;
+      const mime = b64.startsWith('/9j/') ? 'image/jpeg' : 'image/png';
+      return { uri: `data:${mime};base64,${b64}` };
+    }
     if (scan?.overlayImageUrl) return { uri: scan.overlayImageUrl };
     return null;
   }, [scan]);
