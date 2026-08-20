@@ -327,8 +327,10 @@ export async function uploadOcr(
     if (!pollData) continue;
 
     if (pollData.status === 'succeeded' && (pollData.ok === true || typeof pollData.text === 'string')) {
+      let success = toOcrSuccess(pollData);
+
       // Overlay is served separately so poll stays small/fast.
-      if (pollData.hasOverlay && !pollData.overlayBase64) {
+      if (pollData.hasOverlay && !success.overlayBase64) {
         try {
           const overlayRes = await fetch(
             `${getApiBaseUrl()}/ocr/jobs/${encodeURIComponent(jobId)}/overlay`,
@@ -340,7 +342,7 @@ export async function uploadOcr(
               overlayBase64?: string;
             };
             if (overlayJson.overlayBase64) {
-              return toOcrSuccess(pollData, overlayJson.overlayBase64);
+              success = { ...success, overlayBase64: overlayJson.overlayBase64 };
             }
           }
         } catch {
@@ -348,7 +350,35 @@ export async function uploadOcr(
         }
       }
 
-      return toOcrSuccess(pollData);
+      // scanId is attached after background Supabase persist — wait briefly so
+      // local history can link to the server row (avoids duplicate "على الجهاز" + "المحفوظات").
+      if (!success.scanId) {
+        for (let i = 0; i < 12; i++) {
+          if (signal?.aborted) break;
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          try {
+            const againRes = await fetch(
+              `${getApiBaseUrl()}/ocr/jobs/${encodeURIComponent(jobId)}`,
+              { signal }
+            );
+            if (!againRes.ok) continue;
+            const again = (await againRes.json()) as OcrPollResponse;
+            if (again.scanId || again.publicId) {
+              success = {
+                ...success,
+                scanId: again.scanId ?? success.scanId,
+                publicId: again.publicId ?? success.publicId,
+                persisted: again.persisted ?? success.persisted,
+              };
+              break;
+            }
+          } catch {
+            // keep waiting
+          }
+        }
+      }
+
+      return success;
     }
 
     if (

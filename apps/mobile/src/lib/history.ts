@@ -61,39 +61,62 @@ export function buildHistoryItems(
   remoteScans: ScanSummary[]
 ): HistoryListItem[] {
   const remoteById = new Map(remoteScans.map((s) => [s.id, s]));
+  const remoteByPublicId = new Map(
+    remoteScans.filter((s) => s.publicId).map((s) => [s.publicId, s])
+  );
   const linkedServerIds = new Set<string>();
   const items: HistoryListItem[] = [];
 
   for (const local of localScans) {
-    if (local.serverScanId) linkedServerIds.add(local.serverScanId);
+    const localServerId = local.serverScanId || local.result.scanId;
+    const remote =
+      (localServerId ? remoteById.get(localServerId) : undefined) ||
+      (local.publicId ? remoteByPublicId.get(local.publicId) : undefined);
 
-    const remote = local.serverScanId ? remoteById.get(local.serverScanId) : undefined;
+    // Fuzzy link: same OCR preview + created within 3 minutes (covers missing scanId).
+    let fuzzyRemote = remote;
+    if (!fuzzyRemote && local.result.text?.trim()) {
+      const preview = local.result.text.trim().slice(0, 40);
+      fuzzyRemote = remoteScans.find((r) => {
+        if (linkedServerIds.has(r.id)) return false;
+        const remotePreview = (r.previewText || '').trim().slice(0, 40);
+        if (!remotePreview || remotePreview !== preview) return false;
+        const remoteTs = parseTime(r.createdAt);
+        return Math.abs(remoteTs - local.createdAt) < 3 * 60_000;
+      });
+    }
+
+    const matched = remote || fuzzyRemote;
+    const matchedServerId = matched?.id || localServerId;
+
+    if (matchedServerId) linkedServerIds.add(matchedServerId);
+
     const documentationTitle =
-      local.documentationTitle?.trim() || remote?.documentationTitle?.trim() || undefined;
+      local.documentationTitle?.trim() || matched?.documentationTitle?.trim() || undefined;
     const status =
-      documentationTitle || remote?.status === 'documented'
+      documentationTitle || matched?.status === 'documented'
         ? 'documented'
-        : local.serverScanId
+        : matchedServerId
           ? 'analyzed'
           : 'local';
 
     items.push({
       key: local.id,
       localScanId: local.id,
-      serverScanId: local.serverScanId,
+      serverScanId: matchedServerId,
       title: listItemTitle({ documentationTitle }),
       time: formatHistoryTime(local.createdAt),
-      preview: local.result.text?.trim().slice(0, 72) || remote?.previewText || '—',
-      publicId: local.publicId ?? remote?.publicId,
+      preview: local.result.text?.trim().slice(0, 72) || matched?.previewText || '—',
+      publicId: local.publicId ?? matched?.publicId,
       imageUri:
-        local.imageUri ||
+        matched?.overlayImageUrl ||
         local.overlayImageUrl ||
+        local.imageUri ||
         local.sourceImageUrl ||
-        remote?.overlayImageUrl ||
-        remote?.sourceImageUrl ||
+        matched?.sourceImageUrl ||
         '',
       status,
-      confidence: remote?.avgConfidence,
+      confidence: matched?.avgConfidence,
       sortTs: local.createdAt,
     });
   }
