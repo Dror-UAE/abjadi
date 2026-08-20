@@ -61,6 +61,8 @@ let proc: ChildProcessWithoutNullStreams | null = null;
 let workerReady = false;
 let restartScheduled = false;
 let jobsSinceRecycle = 0;
+/** True while we intentionally SIGTERM the worker for RAM recycle. */
+let intentionalRecycle = false;
 const pending = new Map<string, PendingRequest>();
 
 // Concurrency lock — only one OCR job runs at a time.
@@ -176,6 +178,13 @@ function handleCrash(err: Error): void {
   workerReady = false;
   proc = null;
 
+  // Intentional recycle — runOcrWorker will start + warm a new worker itself.
+  if (intentionalRecycle) {
+    intentionalRecycle = false;
+    console.log("[ocr-worker] recycle exit acknowledged");
+    return;
+  }
+
   // Reject in-flight inference requests only.
   // Do NOT touch the concurrency lock here — runOcrWorker's `finally`
   // releases it. Touching the lock here caused double-release races that
@@ -280,17 +289,25 @@ export async function runOcrWorker(
   try {
     const response = await sendRequest(imagePath, outDir, mode);
     jobsSinceRecycle += 1;
-    if (jobsSinceRecycle >= RECYCLE_AFTER_JOBS && proc) {
-      console.log(
-        `[ocr-worker] recycling Python worker after ${jobsSinceRecycle} jobs to free memory`
-      );
+
+    // After N jobs, recycle WHILE still holding the lock and warm the new
+    // worker before releasing — otherwise the next scan hits a dead process
+    // (4th scan stuck / ECONNRESET).
+    if (jobsSinceRecycle >= RECYCLE_AFTER_JOBS) {
       jobsSinceRecycle = 0;
-      const old = proc;
-      proc = null;
-      workerReady = false;
-      old.kill("SIGTERM");
-      // Next request will startWorker() fresh.
+      console.log("[ocr-worker] recycling Python worker to free memory...");
+      if (proc) {
+        intentionalRecycle = true;
+        const old = proc;
+        proc = null;
+        workerReady = false;
+        old.kill("SIGTERM");
+      }
+      startWorker();
+      await waitForReady();
+      console.log("[ocr-worker] recycle warm complete — accepting next scan");
     }
+
     return response;
   } finally {
     releaseLock();
