@@ -48,6 +48,18 @@ function pruneJobs(): void {
   }
 }
 
+/** Strip huge overlay payload before writing job JSON to Supabase storage. */
+function jobForStorage(job: OcrJobRecord): OcrJobRecord {
+  if (!job.result?.overlayBase64) return job;
+  return {
+    ...job,
+    result: {
+      ...job.result,
+      overlayBase64: "[omitted]",
+    },
+  };
+}
+
 async function saveJob(job: OcrJobRecord): Promise<void> {
   job.updatedAt = Date.now();
   jobs.set(job.id, job);
@@ -56,13 +68,11 @@ async function saveJob(job: OcrJobRecord): Promise<void> {
   if (!supabase) return;
 
   const path = `${JOB_PREFIX}/${job.id}.json`;
-  const body = Buffer.from(JSON.stringify(job), "utf8");
-  const { error } = await supabase.storage
-    .from(JOB_BUCKET)
-    .upload(path, body, {
-      contentType: "application/json",
-      upsert: true,
-    });
+  const body = Buffer.from(JSON.stringify(jobForStorage(job)), "utf8");
+  const { error } = await supabase.storage.from(JOB_BUCKET).upload(path, body, {
+    contentType: "application/json",
+    upsert: true,
+  });
 
   if (error) {
     // Log but don't throw — Supabase storage is a best-effort backup.
@@ -112,7 +122,8 @@ async function runJob(
   if (!job) return;
 
   job.status = "running";
-  await saveJob(job);
+  // Don't await Supabase — mobile needs to see "running" from in-memory ASAP.
+  void saveJob(job);
 
   try {
     const result = await runOcr(imageBytes, filename, mode);
@@ -120,22 +131,37 @@ async function runJob(
       job.status = "failed";
       job.error = result.error;
       job.detail = result.detail;
-      await saveJob(job);
+      void saveJob(job);
       return;
     }
 
-    job.result = await finalizeOcr(imageBytes, filename, result);
+    // Mark succeeded IMMEDIATELY so mobile polls get the OCR result without
+    // waiting for Supabase image/overlay uploads (which can take 30–90s and
+    // made every other user think the server was hung).
+    job.result = {
+      ...result,
+      persisted: false,
+    };
     job.status = "succeeded";
-    await saveJob(job);
+    void saveJob(job);
+
+    // Persist scan + images in the background; update scanId when done.
+    void (async () => {
+      try {
+        const finalized = await finalizeOcr(imageBytes, filename, result);
+        const current = jobs.get(jobId);
+        if (!current || current.status !== "succeeded") return;
+        current.result = finalized;
+        void saveJob(current);
+      } catch (err) {
+        console.error("[ocr-job] background persist failed:", err);
+      }
+    })();
   } catch (err) {
     job.status = "failed";
     job.error = "ocr_failed";
     job.detail = err instanceof Error ? err.message : String(err);
-    try {
-      await saveJob(job);
-    } catch (persistErr) {
-      console.error("[ocr-job] failed to save error state:", persistErr);
-    }
+    void saveJob(job);
   }
 }
 
@@ -190,6 +216,10 @@ export async function getOcrJob(id: string): Promise<OcrJobRecord | undefined> {
 
   try {
     const job = JSON.parse(await data.text()) as OcrJobRecord;
+    // Don't restore omitted overlay placeholder into memory as real data.
+    if (job.result?.overlayBase64 === "[omitted]") {
+      delete job.result.overlayBase64;
+    }
     jobs.set(job.id, job);
     return job;
   } catch (err) {

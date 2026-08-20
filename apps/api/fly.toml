@@ -1,5 +1,5 @@
 app = "abjadi"
-primary_region = "sin"
+primary_region = "bom"
 
 [build]
   dockerfile = "Dockerfile"
@@ -17,10 +17,12 @@ primary_region = "sin"
   processes = ["app"]
   idle_timeout = 300
 
+  # Keep soft_limit high so Fly does NOT spin up a 2nd machine.
+  # OCR jobs live in-memory — a second machine steals polls and looks "stuck".
   [http_service.concurrency]
     type = "requests"
-    soft_limit = 20
-    hard_limit = 40
+    soft_limit = 200
+    hard_limit = 250
 
   [[http_service.checks]]
     grace_period = "60s"

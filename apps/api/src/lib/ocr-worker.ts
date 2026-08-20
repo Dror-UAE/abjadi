@@ -18,8 +18,9 @@ import { join } from "node:path";
 import { MODEL_PYTHON, MODEL_ROOT, isModelReady, type OcrMode } from "./model-paths.js";
 
 const WORKER_SCRIPT = join(MODEL_ROOT, "ocr_worker.py");
-const READY_TIMEOUT_MS = 120_000;  // time allowed for cold boot + weight loading
+const READY_TIMEOUT_MS = 120_000; // time allowed for cold boot + weight loading
 const REQUEST_TIMEOUT_MS = 120_000; // hard kill if a single inference hangs
+const QUEUE_TIMEOUT_MS = 90_000; // fail fast if another scan is already running
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,6 +46,12 @@ type PendingRequest = {
   timer: NodeJS.Timeout;
 };
 
+type QueueWaiter = {
+  resolve: () => void;
+  reject: (err: Error) => void;
+  timer: NodeJS.Timeout;
+};
+
 // ---------------------------------------------------------------------------
 // Worker state
 // ---------------------------------------------------------------------------
@@ -56,24 +63,39 @@ const pending = new Map<string, PendingRequest>();
 
 // Concurrency lock — only one OCR job runs at a time.
 let running = false;
-type QueueEntry = () => void;
-const queue: QueueEntry[] = [];
+const queue: QueueWaiter[] = [];
 
 function acquireLock(): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     if (!running) {
       running = true;
       resolve();
-    } else {
-      queue.push(resolve);
+      return;
     }
+
+    const waiter: QueueWaiter = {
+      resolve: () => resolve(),
+      reject,
+      timer: setTimeout(() => {
+        const idx = queue.indexOf(waiter);
+        if (idx >= 0) queue.splice(idx, 1);
+        reject(
+          new Error(
+            "OCR queue timeout — another scan is still running. Please try again in a moment."
+          )
+        );
+      }, QUEUE_TIMEOUT_MS),
+    };
+    queue.push(waiter);
   });
 }
 
 function releaseLock(): void {
   const next = queue.shift();
   if (next) {
-    next();
+    clearTimeout(next.timer);
+    // Keep running=true — ownership transfers to the next waiter.
+    next.resolve();
   } else {
     running = false;
   }
@@ -144,19 +166,14 @@ function handleCrash(err: Error): void {
   workerReady = false;
   proc = null;
 
-  // Reject all pending requests
+  // Reject in-flight inference requests only.
+  // Do NOT touch the concurrency lock here — runOcrWorker's `finally`
+  // releases it. Touching the lock here caused double-release races that
+  // let two jobs run at once and hung/OOM'd the VM.
   for (const [id, entry] of pending) {
     clearTimeout(entry.timer);
     pending.delete(id);
     entry.reject(err);
-  }
-
-  // Drain the lock queue so the next waiter doesn't stall forever
-  running = false;
-  const next = queue.shift();
-  if (next) {
-    running = true;
-    next();
   }
 
   // Schedule a restart after a short delay to avoid spin-loops
@@ -183,8 +200,14 @@ function stopWorker(): void {
 
 // Graceful shutdown on process exit
 process.on("exit", stopWorker);
-process.on("SIGTERM", () => { stopWorker(); process.exit(0); });
-process.on("SIGINT",  () => { stopWorker(); process.exit(0); });
+process.on("SIGTERM", () => {
+  stopWorker();
+  process.exit(0);
+});
+process.on("SIGINT", () => {
+  stopWorker();
+  process.exit(0);
+});
 
 // ---------------------------------------------------------------------------
 // Wait for the worker to be ready (used after startWorker)
@@ -240,7 +263,8 @@ export async function runOcrWorker(
   // Wait for boot/weight-loading to complete
   await waitForReady();
 
-  // Acquire single-job lock
+  // Acquire single-job lock (fails after QUEUE_TIMEOUT_MS so other users
+  // don't hang forever behind a stuck scan)
   await acquireLock();
 
   try {
@@ -265,7 +289,10 @@ function sendRequest(
 
     const timer = setTimeout(() => {
       pending.delete(id);
-      // Kill the worker — it's stuck.  handleCrash will restart it.
+      // Kill the worker — it's stuck. handleCrash will restart it.
+      console.error(
+        `[ocr-worker] request ${id} timed out after ${REQUEST_TIMEOUT_MS / 1000}s — killing worker`
+      );
       if (proc) {
         proc.kill("SIGKILL");
       }
