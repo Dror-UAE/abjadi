@@ -52,14 +52,14 @@ async function prepareUploadImage(imageUri: string): Promise<{
   mimeType: string;
   imageBase64?: string;
 }> {
-  // Resize for remote APIs. Prefer keeping a local file URI for multipart upload
-  // (smaller + more reliable than JSON base64 on mobile networks).
+  // Keep enough resolution for stone glyph OCR. Too much compression (1024@0.55)
+  // made results collapse to a handful of glyphs.
   try {
     const optimized = await ImageManipulator.manipulateAsync(
       imageUri,
-      [{ resize: { width: 1024 } }],
+      [{ resize: { width: 1600 } }],
       {
-        compress: 0.55,
+        compress: 0.85,
         format: ImageManipulator.SaveFormat.JPEG,
         base64: true,
       }
