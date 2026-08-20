@@ -139,16 +139,19 @@ export function ResultScreen() {
     return Math.round(sum / glyphs.length);
   }, [scan]);
 
-  /** Own device scan (not remote-only history). */
-  const isMine = Boolean(scan && !scan.id.startsWith('server-'));
+  /** Local capture — can document. */
+  const isLocalCapture = Boolean(scan && !scan.id.startsWith('server-'));
+
+  /** Can delete local captures and server history items. */
+  const canDelete = Boolean(scan);
 
   /** Own scan, not already documented, and saved on the server. */
   const canDocument = useMemo(() => {
-    if (!scan || !isMine) return false;
+    if (!scan || !isLocalCapture) return false;
     const alreadyDocumented = Boolean(scan.documentationTitle?.trim());
     const hasServerScan = Boolean(scan.serverScanId || scan.result.scanId);
     return !alreadyDocumented && hasServerScan;
-  }, [scan, isMine]);
+  }, [scan, isLocalCapture]);
 
   const copyText = (text: string, label: string) => {
     Clipboard.setString(text);
@@ -168,7 +171,7 @@ export function ResultScreen() {
   };
 
   const confirmDelete = () => {
-    if (!scan || !isMine) return;
+    if (!scan || !canDelete) return;
 
     Alert.alert(
       'حذف التحليل',
@@ -472,7 +475,7 @@ export function ResultScreen() {
             </ArabicText>
           </Pressable>
 
-          {isMine ? (
+          {canDelete ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="حذف التحليل"

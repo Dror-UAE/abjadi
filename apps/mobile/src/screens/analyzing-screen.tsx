@@ -31,7 +31,7 @@ import { FlowChrome, Palette, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError, checkApiHealth, getApiBaseUrl, uploadOcr } from '@/lib/api';
 import { isLikelyNetworkError, loadApiConfig, setApiBaseUrl, apiUrlHint, isDevSimulator } from '@/lib/api-config';
-import { saveScan } from '@/lib/scan-store';
+import { clearAllScans, saveScan } from '@/lib/scan-store';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_SIZE = Math.min(SCREEN_WIDTH * 0.72, 300);
@@ -261,12 +261,14 @@ export function AnalyzingScreen() {
   const [apiUrlDraft, setApiUrlDraft] = useState('');
   const [savingServer, setSavingServer] = useState(false);
   const finishedRef = useRef(false);
+  const runIdRef = useRef(0);
 
   useEffect(() => {
     void loadApiConfig().then((url) => setApiUrlDraft(url));
   }, []);
 
   useEffect(() => {
+    const runId = ++runIdRef.current;
     finishedRef.current = false;
     setError(null);
     setStepIndex(0);
@@ -290,8 +292,6 @@ export function AnalyzingScreen() {
       });
     }, 120);
 
-    let cancelled = false;
-
     async function run() {
       try {
         if (!imageUri) {
@@ -300,26 +300,43 @@ export function AnalyzingScreen() {
           );
         }
 
-        // Do not pass AbortSignal for the upload — aborting mid-upload causes
-        // ECONNRESET on Fly and the app loses the jobId even though OCR started.
         const response = await uploadOcr(imageUri);
-        if (cancelled || finishedRef.current) return;
 
         if (!response.ok) {
+          if (runId !== runIdRef.current) return;
           throw new ApiError(response.detail || response.error);
         }
 
+        const success = { ...response, ok: true as const };
         const scanId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        await saveScan({
-          id: scanId,
-          imageUri,
-          result: response,
-          createdAt: Date.now(),
-          serverScanId: response.scanId,
-          publicId: response.publicId,
-        });
 
-        if (cancelled) return;
+        // Always save locally — even if this effect was superseded — so the scan
+        // shows as yours and can be deleted. Old code set cancelled=true on remount
+        // and dropped the success while the server already finished.
+        try {
+          await saveScan({
+            id: scanId,
+            imageUri,
+            result: success,
+            createdAt: Date.now(),
+            serverScanId: success.scanId,
+            publicId: success.publicId,
+          });
+        } catch (saveErr) {
+          console.warn('[analyzing] saveScan failed, clearing cache and retrying', saveErr);
+          await clearAllScans();
+          await saveScan({
+            id: scanId,
+            imageUri,
+            result: success,
+            createdAt: Date.now(),
+            serverScanId: success.scanId,
+            publicId: success.publicId,
+          });
+        }
+
+        // Only the latest run may drive UI / navigation.
+        if (runId !== runIdRef.current || finishedRef.current) return;
 
         finishedRef.current = true;
         setStepIndex(4);
@@ -327,7 +344,7 @@ export function AnalyzingScreen() {
         progress.value = withTiming(1, { duration: 350 });
 
         setTimeout(() => {
-          if (cancelled) return;
+          if (runId !== runIdRef.current) return;
           router.replace({
             pathname: '/result',
             params: {
@@ -337,7 +354,7 @@ export function AnalyzingScreen() {
           });
         }, 450);
       } catch (err) {
-        if (cancelled || finishedRef.current) return;
+        if (runId !== runIdRef.current || finishedRef.current) return;
         if (err instanceof Error && err.name === 'AbortError') return;
         const message =
           err instanceof ApiError
@@ -359,7 +376,6 @@ export function AnalyzingScreen() {
     void run();
 
     return () => {
-      cancelled = true;
       stepTimers.forEach(clearTimeout);
       clearInterval(tick);
     };

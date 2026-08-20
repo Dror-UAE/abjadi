@@ -8,7 +8,8 @@ import * as SystemUI from 'expo-system-ui';
 import { useAppFonts } from '@/hooks/use-app-fonts';
 import { useTheme } from '@/hooks/use-theme';
 import { loadApiConfig } from '@/lib/api-config';
-import { loadScans } from '@/lib/scan-store';
+import { clearAllScans, loadScans } from '@/lib/scan-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   checkAppVersion,
   type VersionCheckResult,
@@ -50,6 +51,17 @@ export default function RootLayout() {
 
     async function boot() {
       await loadApiConfig();
+      // One-time wipe of stale local scan cache that blocked result navigation.
+      const clearedKey = 'abjadi.scans.cacheCleared.v2';
+      try {
+        const already = await AsyncStorage.getItem(clearedKey);
+        if (!already) {
+          await clearAllScans();
+          await AsyncStorage.setItem(clearedKey, '1');
+        }
+      } catch {
+        await clearAllScans();
+      }
       void loadScans();
       const result = await checkAppVersion();
       if (cancelled) return;

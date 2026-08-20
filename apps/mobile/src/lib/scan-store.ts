@@ -94,6 +94,14 @@ export async function clearScan(id: string): Promise<void> {
   await persistToDisk();
 }
 
+/** Wipe all locally cached scans (AsyncStorage + memory). */
+export async function clearAllScans(): Promise<void> {
+  scans.clear();
+  loaded = true;
+  loadPromise = null;
+  await AsyncStorage.removeItem(STORAGE_KEY);
+}
+
 
 export async function setScanDocumentationTitle(
   localScanId: string | undefined,
